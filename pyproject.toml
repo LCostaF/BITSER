@@ -1,0 +1,52 @@
+[project]
+name = "bitser-pckg"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "LucasCFuganti",email = "lucascostafuganti@alunos.utfpr.edu.br"}
+]
+readme = "README.md"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "numpy (>=2.2.3,<3.0.0)",
+    "bio (>=1.7.1,<2.0.0)",
+    "rich (>=13.9.4,<14.0.0)",
+    "typer (>=0.15.2,<0.16.0)",
+    "scikit-learn (>=1.6.1,<2.0.0)",
+    "xgboost (>=2.1.4,<3.0.0)",
+    "joblib (>=1.4.2,<2.0.0)"
+]
+
+[tool.poetry]
+packages = [
+    {include = "bitser"}
+]
+
+[tool.poetry.scripts]
+bitser = "bitser.cli:app"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+pytest-cov = "^6.0.0"
+blue = "^0.9.1"
+isort = "^6.0.1"
+taskipy = "^1.14.1"
+
+[tool.pytest.ini_options]
+pythonpath = "."
+addopts = "--doctest-modules"
+
+[tool.isort]
+profile = "black"
+line_length = 79
+
+[tool.taskipy.tasks]
+codeck = "blue --check --diff . && isort --check --diff ."
+codecg = "blue . && isort ."
+pre_test = "task codeck"
+test = "pytest -s -x --cov=bitser -vv"
+post_test = "coverage html"
