@@ -5,7 +5,9 @@ from typer import Context, Exit, Option, Typer
 from typing_extensions import Annotated
 
 from bitser import __version__
-from bitser.main import main as _main
+from bitser.data_preprocessing import prepare_dataframe
+from bitser.feature_extraction import extract_features_from_path
+from bitser.model_training import run_classification
 
 app = Typer(rich_markup_mode='rich')
 console = Console()
@@ -103,16 +105,40 @@ def run(
     If test_dir is provided, it evaluates the model on the test data.
     Otherwise, it performs cross-validation on the training data.
     """
-    _main(
-        train_dir=train_dir,
-        test_dir=test_dir,
-        translate_sequences=translate_sequences,
-        classifier_type=classifier_type,
-        flank=flank,
-        n_splits=n_splits,
-        n_repeats=n_repeats,
-        seed=seed,
-    )
+    # Main logic from the original main() function
+    train_features = extract_features_from_path(train_dir, flank, translate_sequences)
+    train_df, train_classes, name_class = prepare_dataframe(train_features)
+
+    if test_dir is None:
+        print("Running cross-validation on training data...")
+        result = run_classification(
+            train_df,
+            None,
+            train_classes,
+            None,
+            name_class,
+            classifier_type,
+            n_splits=n_splits,
+            n_repeats=n_repeats,
+            seed=seed
+        )
+    else:
+        print("Running train-test evaluation...")
+        test_features = extract_features_from_path(test_dir, flank, translate_sequences)
+        test_df, test_classes, _ = prepare_dataframe(test_features)
+        result = run_classification(
+            train_df,
+            test_df,
+            train_classes,
+            test_classes,
+            name_class,
+            classifier_type,
+            n_splits=n_splits,
+            n_repeats=n_repeats,
+            seed=seed
+        )
+
+    return result
 
 
 @app.command()
