@@ -1,21 +1,41 @@
 import pytest
-
 from rich.console import Console
+from rich.progress import track
 from typer import Context, Exit, Option, Typer
 from typing_extensions import Annotated
 
 from bitser import __version__
 from bitser.data_preprocessing import prepare_dataframe
 from bitser.feature_extraction import extract_features_from_path
-from bitser.model_training import run_classification
+from bitser.file_utils import save_output_to_file
+from bitser.model_training import (
+    load_model,
+    predict_and_evaluate,
+    save_model,
+    train_classification_model,
+)
 
-app = Typer(rich_markup_mode='rich')
+app = Typer(
+    rich_markup_mode='rich',
+    help="""BITSER - Bioinformatics Tool for Sequence Classification
+
+Examples:
+  [bold]Train a model:[/bold]
+  bitser train --input training_data/ --output model.pkl
+
+  [bold]Test sequences:[/bold]
+  bitser predict --model model.pkl --data test_sequences/
+
+  [bold]Quick start:[/bold]
+  bitser train -i training/ -o results/model.pkl -f 8
+""",
+)
 console = Console()
 
 
 def show_version(flag):
     if flag:
-        print(f'BITSER version: {__version__}')
+        console.print(f'[bold]BITSER version:[/bold] {__version__}')
         raise Exit(code=0)
 
 
@@ -31,142 +51,248 @@ def main(
         help='Show version and exit.',
     ),
 ):
-    message = (
-        'Welcome to BITSER! Type bitser --help to see the available commands.'
-    )
     if ctx.invoked_subcommand:
         return
-    console.print(message)
+    console.print(
+        '[bold]Welcome to BITSER![/bold] Type [cyan]bitser --help[/cyan] to see available commands.'
+    )
 
 
 @app.command()
-def run(
-        train_dir: Annotated[
-            str,
-            Option(
-                '--train-dir',
-                help='Path to directory containing the training data in FASTA format.',
-            ),
-        ],
-        test_dir: Annotated[
-            str,
-            Option(
-                '--test-dir',
-                help='Path to directory containing the test data in FASTA format. If None, cross-validation is performed.',
-            ),
-        ] = None,
-        translate_sequences: Annotated[
-            bool,
-            Option(
-                '--translate-sequences',
-                help='Boolean to translate sequences or not.',
-            ),
-        ] = False,
-        classifier_type: Annotated[
-            str,
-            Option(
-                '--classifier-type',
-                help='Flag for classifier type.',
-            ),
-        ] = 'xgb',
-        flank: Annotated[
-            int,
-            Option(
-                '--flank',
-                help='Size of the sliding window that runs through the sequence.',
-            ),
-        ] = 8,
-        n_splits: Annotated[
-            int,
-            Option(
-                '--n-splits',
-                help='Number of splits for k-fold cross-validation.',
-            ),
-        ] = 10,
-        n_repeats: Annotated[
-            int,
-            Option(
-                '--n-repeats',
-                help='Number of times to repeat the cross-validation process.',
-            ),
-        ] = 10,
-        seed: Annotated[
-            int,
-            Option(
-                '--seed',
-                help='Random seed for reproducibility.',
-            ),
-        ] = 7,
+def train(
+    input: Annotated[
+        str,
+        Option(
+            '--input',
+            '-i',
+            help='Directory containing training FASTA files (e.g., "./training_data/")',
+        ),
+    ],
+    output: Annotated[
+        str,
+        Option(
+            '--output',
+            '-o',
+            help='Path to save the trained model (e.g., "model.pkl")',
+        ),
+    ] = 'model.pkl',
+    classifier: Annotated[
+        str,
+        Option(
+            '--classifier',
+            '-c',
+            help='Classifier algorithm: "rf" (Random Forest) or "xgb" (XGBoost)',
+        ),
+    ] = 'xgb',
+    flank: Annotated[
+        int,
+        Option(
+            '--flank',
+            '-f',
+            help='Sliding window size for feature extraction (default: 8)',
+        ),
+    ] = 8,
+    translate: Annotated[
+        bool,
+        Option(
+            '--translate/--no-translate',
+            help='Translate nucleotide sequences to proteins',
+        ),
+    ] = False,
+    splits: Annotated[
+        int,
+        Option(
+            '--splits',
+            '-s',
+            help='Number of cross-validation folds (default: 10)',
+        ),
+    ] = 10,
+    repeats: Annotated[
+        int,
+        Option(
+            '--repeats',
+            '-r',
+            help='Cross-validation repetitions (default: 10)',
+        ),
+    ] = 10,
+    seed: Annotated[
+        int,
+        Option(
+            '--seed',
+            help='Random seed for reproducibility (default: 7)',
+        ),
+    ] = 7,
+    test_size: Annotated[
+        float,
+        Option(
+            '--test-size',
+            '-t',
+            help='Fraction of data for testing if no separate test set (default: 0.2)',
+        ),
+    ] = 0.2,
 ):
     """
-    Runs BITSER feature extraction and classification on sequence data.
+    Train a classification model from sequence data.
 
-    This command performs feature extraction and trains a classifier on the provided data.
-    If test_dir is provided, it evaluates the model on the test data.
-    Otherwise, it performs cross-validation on the training data.
+    The training process includes:
+    1. Feature extraction using sliding windows
+    2. Model training with cross-validation
+    3. Saving the trained model for future use
     """
-    # Main logic from the original main() function
-    train_features = extract_features_from_path(train_dir, flank, translate_sequences)
+    console.print(
+        f'[bold]Training model with {classifier} classifier...[/bold]'
+    )
+
+    # Extract features with progress indication
+    console.print('[cyan]Extracting features...[/cyan]')
+    train_features = extract_features_from_path(input, flank, translate)
+    console.print('[bold green]✓ Feature extraction complete![/bold green]')
+
+    console.print('[cyan]Preparing dataframe...[/cyan]')
     train_df, train_classes, name_class = prepare_dataframe(train_features)
+    console.print('[bold green]✓ Dataframe prepared![/bold green]')
 
-    if test_dir is None:
-        print("Running cross-validation on training data...")
-        result = run_classification(
-            train_df,
-            None,
-            train_classes,
-            None,
-            name_class,
-            classifier_type,
-            n_splits=n_splits,
-            n_repeats=n_repeats,
-            seed=seed
-        )
-    else:
-        print("Running train-test evaluation...")
-        test_features = extract_features_from_path(test_dir, flank, translate_sequences)
-        test_df, test_classes, _ = prepare_dataframe(test_features)
-        result = run_classification(
-            train_df,
-            test_df,
-            train_classes,
-            test_classes,
-            name_class,
-            classifier_type,
-            n_splits=n_splits,
-            n_repeats=n_repeats,
-            seed=seed
-        )
+    console.print('[cyan]Training model...[/cyan]')
+    (
+        classifier_model,
+        min_max_scaler,
+        label_encoder,
+        _,
+        output_text,
+    ) = train_classification_model(
+        train_df,
+        train_classes,
+        classifier_type=classifier,
+        n_splits=splits,
+        n_repeats=repeats,
+        seed=seed,
+        perform_cv=True,
+    )
+    console.print('[bold green]✓ Finished training model![/bold green]')
 
-    return result
+    save_output_to_file(output_text, classifier)
+
+    save_model(
+        classifier_model,
+        min_max_scaler,
+        label_encoder,
+        None,
+        output,
+        name_class=name_class,
+        output_text=output_text,
+        train_df_columns=train_df.columns.tolist(),
+    )
+
+    console.print(
+        f'[bold green]✓ Success![/bold green] Model saved to [cyan]{output}[/cyan]'
+    )
 
 
-@app.command()
+@app.command(name='predict')
 def test(
-        verbose: Annotated[
-            bool,
-            Option(
-                "--verbose", "-v",
-                help="Run tests in verbose mode."
-            ),
-        ] = False,
-        test_path: Annotated[
-            str,
-            Option(
-                "--path", "-p",
-                help="Path to the test directory or specific test file to run.",
-            ),
-        ] = "tests/",
+    model: Annotated[
+        str,
+        Option(
+            '--model',
+            '-m',
+            help='Path to trained model file (e.g., "model.pkl")',
+        ),
+    ],
+    data: Annotated[
+        str,
+        Option(
+            '--data',
+            '-d',
+            help='Directory containing test FASTA files',
+        ),
+    ] = None,
+    flank: Annotated[
+        int,
+        Option(
+            '--flank',
+            '-f',
+            help='Sliding window size (must match training setting)',
+        ),
+    ] = 8,
+    translate: Annotated[
+        bool,
+        Option(
+            '--translate/--no-translate',
+            help='Translate nucleotide sequences to proteins',
+        ),
+    ] = False,
 ):
     """
-    Run the project tests using pytest.
+    Predict classes for new sequences using a trained model.
 
-    This command executes all tests in the specified directory (defaults to 'tests/').
+    Output includes:
+    - Classification accuracy
+    - Per-class performance metrics
+    - Confusion matrix (if applicable)
     """
+    console.print(f'[bold]Loading model from {model}...[/bold]')
+    model_data = load_model(model)
+    console.print(f'[bold green]✓ {model} loaded successfully![/bold green]')
 
-    args = [test_path]
+    if data:
+        console.print('[cyan]Processing test sequences...[/cyan]')
+        test_features = extract_features_from_path(data, flank, translate)
+        test_df, test_classes, _ = prepare_dataframe(test_features)
+        console.print('[bold green]✓ Test sequences processed![/bold green]')
+    else:
+        if 'test_data' not in model_data:
+            console.print(
+                '[red]Error:[/red] No test data provided and no saved test data found in model!'
+            )
+            raise Exit(code=1)
+        test_df, test_classes = model_data['test_data']
+
+    classifier_type = type(model_data['classifier']).__name__.lower()
+
+    console.print('[cyan]Running predictions...[/cyan]')
+    _, _, _, complete_output = predict_and_evaluate(
+        model_data['classifier'],
+        model_data['scaler'],
+        model_data['encoder'],
+        test_df,
+        test_classes,
+        model_data.get('name_class', []),
+        train_df=None,
+        previous_output=model_data.get('output_text', ''),
+        classifier_type=classifier_type,
+        validation_df=None,
+        validation_classes=None,
+        save_files=True,
+    )
+
+    console.print(
+        f'[bold green]✓ Prediction complete![/bold green] Results saved to output files'
+    )
+
+
+@app.command(hidden=True)
+def run_tests(
+    verbose: Annotated[
+        bool,
+        Option(
+            '--verbose',
+            '-v',
+            help='Show detailed test output',
+        ),
+    ] = False,
+    path: Annotated[
+        str,
+        Option(
+            '--path',
+            '-p',
+            help='Test directory or specific test file',
+        ),
+    ] = 'tests/',
+):
+    """(For developers) Run the test suite"""
+    args = [path]
     if verbose:
-        args.append("-v")
+        args.append('-v')
 
     exit_code = pytest.main(args)
     if exit_code != 0:

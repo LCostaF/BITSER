@@ -4,6 +4,7 @@ from fnmatch import fnmatch
 import numpy as np
 from Bio import SeqIO
 from joblib import Parallel, delayed
+from tqdm import tqdm
 
 from bitser.sequence_utils import translate
 
@@ -183,32 +184,65 @@ def calc_bwp(hist):
     return 1 - (total_sum / total_div)
 
 
-def process_file(file_in, flank, translate_sequences):
+def count_sequences_in_file(file_path):
+    """
+    Count the number of sequences in a FASTA file
+    :param file_path: Path to the FASTA file
+    :return: Number of sequences in the file
+    """
+    try:
+        count = 0
+        with open(file_path, encoding='utf-8') as handle:
+            for _ in SeqIO.parse(handle, 'fasta'):
+                count += 1
+        return count
+    except Exception as e:
+        print(f'Error counting sequences in {file_path}: {e}')
+        return 0
+
+
+def process_file(file_in, flank, translate_sequences, file_seq_counts):
     """
     # Extract features from an individual FASTA file
     :param file_in: Path to the FASTA file
     :param flank: Size of the sliding window that runs through the sequence
     :param translate_sequences: Boolean for if the sequences should be translated or not
+    :param file_seq_counts: Dictionary mapping file paths to their sequence counts
     :return: Numpy array of features
     """
     try:
         file_name = os.path.basename(file_in).split('.')[0]
         feature_batch = []
-        with open(file_in, encoding="utf-8") as handle:
-            for record in SeqIO.parse(handle, "fasta"):
+
+        # Get expected sequence count for this file
+        expected_count = file_seq_counts.get(file_in, 0)
+
+        with open(file_in, encoding='utf-8') as handle:
+            # Use tqdm for the sequence processing within each file
+            for record in tqdm(
+                SeqIO.parse(handle, 'fasta'),
+                total=expected_count,
+                desc=f'Processing {file_name}',
+                leave=True,
+            ):  # leave=False prevents the progress bar from persisting
                 seq_record = str(record.seq).upper()
-                hist_center = calc_hist(seq_record, flank, translate_sequences, True)
+                hist_center = calc_hist(
+                    seq_record, flank, translate_sequences, True
+                )
                 bws = calc_bws(hist_center)
                 bwp = calc_bwp(hist_center)
                 concat_features = hist_center + [bws, bwp, file_name]
                 feature_batch.append(concat_features)
+
         return np.array(feature_batch, dtype=object)
     except Exception as e:
-        print(f"Error processing file {file_in}: {e}")
+        print(f'Error processing file {file_in}: {e}')
         return np.array([])
 
 
-def extract_features_from_path(dir_path, flank: int = 8, translate_sequences=False, n_jobs=-1):
+def extract_features_from_path(
+    dir_path, flank: int = 8, translate_sequences=False, n_jobs=-1
+):
     """
     # Perform feature extraction on all FASTA files in a directory
     :param dir_path: The path to the target directory
@@ -217,10 +251,31 @@ def extract_features_from_path(dir_path, flank: int = 8, translate_sequences=Fal
     :param n_jobs: Maximum number of concurrently running jobs for Parallel execution
     :return: Numpy V Stacked features
     """
-    files = [os.path.join(dir_path, name) for name in os.listdir(dir_path)
-             if fnmatch(name, "*.fasta")]
+    files = [
+        os.path.join(dir_path, name)
+        for name in os.listdir(dir_path)
+        if fnmatch(name, '*.fasta')
+    ]
 
-    # Use joblib to parallelize the processing of each file
-    features = Parallel(n_jobs=n_jobs)(delayed(process_file)(file_in, flank, translate_sequences) for file_in in files)
+    # Count total sequences across all files first
+    print('Counting total sequences across all files...')
+    file_seq_counts = {}
+    total_sequences = 0
 
+    for file_path in files:
+        seq_count = count_sequences_in_file(file_path)
+        file_seq_counts[file_path] = seq_count
+        total_sequences += seq_count
+
+    print(f'Found {total_sequences} sequences across {len(files)} files')
+
+    # Process files with progress bar
+    features = Parallel(n_jobs=n_jobs)(
+        delayed(process_file)(
+            file_in, flank, translate_sequences, file_seq_counts
+        )
+        for file_in in files
+    )
+
+    print(f'Feature extraction complete for all {total_sequences} sequences')
     return np.vstack(features)

@@ -1,12 +1,12 @@
 [project]
-name = "bitser-pckg"
+name = "bitser"
 version = "0.1.0"
 description = ""
 authors = [
     {name = "LucasCFuganti",email = "lucascostafuganti@alunos.utfpr.edu.br"}
 ]
 readme = "README.md"
-requires-python = ">=3.11,<4.0"
+requires-python = ">=3.13,<4.0"
 dependencies = [
     "numpy (>=2.2.3,<3.0.0)",
     "bio (>=1.7.1,<2.0.0)",
@@ -14,7 +14,7 @@ dependencies = [
     "typer (>=0.15.2,<0.16.0)",
     "scikit-learn (>=1.6.1,<2.0.0)",
     "xgboost (>=2.1.4,<3.0.0)",
-    "joblib (>=1.4.2,<2.0.0)"
+    "joblib (>=1.4.2,<2.0.0)",
 ]
 
 [tool.poetry]

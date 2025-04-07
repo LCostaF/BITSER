@@ -1,18 +1,31 @@
+import io
+import pickle
+from contextlib import redirect_stdout
+
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import RepeatedStratifiedKFold, cross_validate, train_test_split
-from sklearn import preprocessing
-from sklearn.metrics import classification_report, confusion_matrix
 import xgboost as xgb
-import io
-from contextlib import redirect_stdout
+from sklearn import preprocessing
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.model_selection import (
+    RepeatedStratifiedKFold,
+    cross_validate,
+    train_test_split,
+)
 
 from bitser.file_utils import save_output_to_file, save_validation_data
 
 
-def train_classification_model(train_df, train_classes, classifier_type='rf',
-                               n_splits=10, n_repeats=10, seed=7, perform_cv=True):
+def train_classification_model(
+    train_df,
+    train_classes,
+    classifier_type='rf',
+    n_splits=10,
+    n_repeats=10,
+    seed=7,
+    perform_cv=True,
+):
     """
     Train a classification model on the provided data.
 
@@ -49,8 +62,7 @@ def train_classification_model(train_df, train_classes, classifier_type='rf',
         label_encoder = preprocessing.LabelEncoder()
 
         train_df_scaled = pd.DataFrame(
-            min_max_scaler.fit_transform(train_df),
-            columns=train_df.columns
+            min_max_scaler.fit_transform(train_df), columns=train_df.columns
         )
 
         label_encoder.fit(train_classes)
@@ -58,33 +70,48 @@ def train_classification_model(train_df, train_classes, classifier_type='rf',
 
         # Initialize classifier
         if classifier_type == 'rf':
-            classifier = RandomForestClassifier(n_estimators=100, random_state=seed)
+            classifier = RandomForestClassifier(
+                n_estimators=100, random_state=seed
+            )
         elif classifier_type == 'xgb':
             num_class = len(label_encoder.classes_)
-            classifier = xgb.XGBClassifier(objective='multi:softprob', random_state=seed, num_class=num_class,
-                                           n_jobs=-1)
+            classifier = xgb.XGBClassifier(
+                objective='multi:softprob',
+                random_state=seed,
+                num_class=num_class,
+                n_jobs=-1,
+            )
         else:
-            raise ValueError(f"Unsupported classifier type: {classifier_type}")
+            raise ValueError(f'Unsupported classifier type: {classifier_type}')
 
         # Perform cross-validation if requested
         if perform_cv:
-            print("Performing cross-validation...")
-            cross_val = RepeatedStratifiedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=seed)
+            print('Performing cross-validation...')
+            cross_val = RepeatedStratifiedKFold(
+                n_splits=n_splits, n_repeats=n_repeats, random_state=seed
+            )
             cv_scores = cross_validate(
                 classifier,
                 train_df_scaled,
                 y_train,
-                scoring=["accuracy", "precision_macro", "recall_macro", "f1_macro"],
+                scoring=[
+                    'accuracy',
+                    'precision_macro',
+                    'recall_macro',
+                    'f1_macro',
+                ],
                 cv=cross_val,
                 n_jobs=-1,
-                error_score="raise"
+                error_score='raise',
             )
 
             # Print cross-validation results
             print('\nCross-validation scores:')
             for metric, scores in cv_scores.items():
                 if metric.startswith('test_'):
-                    print(f'{metric[5:]}: {np.mean(scores):.3f} ± {np.std(scores):.3f}')
+                    print(
+                        f'{metric[5:]}: {np.mean(scores):.3f} ± {np.std(scores):.3f}'
+                    )
 
         # Train the final model on the full training set
         classifier.fit(train_df_scaled, y_train)
@@ -93,11 +120,29 @@ def train_classification_model(train_df, train_classes, classifier_type='rf',
 
     print(output_text)
 
-    return classifier, min_max_scaler, label_encoder, train_df_scaled, output_text
+    return (
+        classifier,
+        min_max_scaler,
+        label_encoder,
+        train_df_scaled,
+        output_text,
+    )
 
 
-def predict_and_evaluate(classifier, min_max_scaler, label_encoder, test_df, test_classes, name_class, train_df=None,
-                         previous_output="", classifier_type='rf', validation_df=None, validation_classes=None, save_files=True):
+def predict_and_evaluate(
+    classifier,
+    min_max_scaler,
+    label_encoder,
+    test_df,
+    test_classes,
+    name_class,
+    train_df=None,
+    previous_output='',
+    classifier_type='rf',
+    validation_df=None,
+    validation_classes=None,
+    save_files=True,
+):
     """
     Predict and evaluate a trained classifier on test and validation data.
 
@@ -133,48 +178,52 @@ def predict_and_evaluate(classifier, min_max_scaler, label_encoder, test_df, tes
     """
     f = io.StringIO()
     with redirect_stdout(f):
-        print("\nEvaluating on test data...")
+        print('\nEvaluating on test data...')
         test_df_scaled = pd.DataFrame(
-            min_max_scaler.transform(test_df),
-            columns=test_df.columns
+            min_max_scaler.transform(test_df), columns=test_df.columns
         )
         y_test = label_encoder.transform(test_classes)
         y_pred_test = classifier.predict(test_df_scaled)
 
         print('\nTest set results:')
-        print(f'Classification report:\n{classification_report(y_test, y_pred_test, target_names=name_class)}')
+        print(
+            f'Classification report:\n{classification_report(y_test, y_pred_test, target_names=name_class)}'
+        )
 
         print('\nPer-class accuracies (Test Data):')
-        cm_test = confusion_matrix(y_test, y_pred_test, normalize="true")
+        cm_test = confusion_matrix(y_test, y_pred_test, normalize='true')
         accuracy_per_class_test = cm_test.diagonal()
         for idx, accuracy in enumerate(accuracy_per_class_test):
             print(f'Class {name_class[idx]} accuracy: {accuracy:.4f}')
 
         if validation_df is not None and validation_classes is not None:
-            print("\nEvaluating on validation data...")
+            print('\nEvaluating on validation data...')
             validation_df_scaled = pd.DataFrame(
                 min_max_scaler.transform(validation_df),
-                columns=validation_df.columns
+                columns=validation_df.columns,
             )
             y_val = label_encoder.transform(validation_classes)
             y_pred_val = classifier.predict(validation_df_scaled)
 
             print('\nValidation set results:')
-            print(f'Classification report:\n{classification_report(y_val, y_pred_val, target_names=name_class)}')
+            print(
+                f'Classification report:\n{classification_report(y_val, y_pred_val, target_names=name_class)}'
+            )
 
             print('\nPer-class accuracies (Validation Data):')
-            cm_val = confusion_matrix(y_val, y_pred_val, normalize="true")
+            cm_val = confusion_matrix(y_val, y_pred_val, normalize='true')
             accuracy_per_class_val = cm_val.diagonal()
             for idx, accuracy in enumerate(accuracy_per_class_val):
                 print(f'Class {name_class[idx]} accuracy: {accuracy:.4f}')
 
         # Print overall feature importance
         feature_importances = classifier.feature_importances_
-        feature_names = train_df.columns if train_df is not None else test_df.columns
-        feature_importances_df = pd.DataFrame({
-            'Feature': feature_names,
-            'Importance': feature_importances
-        }).sort_values(by='Importance', ascending=False)
+        feature_names = (
+            train_df.columns if train_df is not None else test_df.columns
+        )
+        feature_importances_df = pd.DataFrame(
+            {'Feature': feature_names, 'Importance': feature_importances}
+        ).sort_values(by='Importance', ascending=False)
 
         pd.set_option('display.max_rows', None)
         print('\nOverall Feature Importance:')
@@ -189,11 +238,21 @@ def predict_and_evaluate(classifier, min_max_scaler, label_encoder, test_df, tes
     if save_files:
         save_output_to_file(complete_output, classifier_type)
 
-    return classifier, min_max_scaler, label_encoder
+    return classifier, min_max_scaler, label_encoder, complete_output
 
 
-def run_classification(train_df, test_df, train_classes, test_classes, name_class, classifier_type='rf',
-                       n_splits=10, n_repeats=10, seed=7, save_files=True):
+def run_classification(
+    train_df,
+    test_df,
+    train_classes,
+    test_classes,
+    name_class,
+    classifier_type='rf',
+    n_splits=10,
+    n_repeats=10,
+    seed=7,
+    save_files=True,
+):
     """
     Perform either cross-validation or train-test evaluation on a dataset.
 
@@ -236,14 +295,32 @@ def run_classification(train_df, test_df, train_classes, test_classes, name_clas
     f = io.StringIO()
     with redirect_stdout(f):
         if test_df is None:
-            print("Performing cross-validation evaluation...")
+            print('Performing cross-validation evaluation...')
 
             # Split data into train, validation, and test sets
-            train_subset, test_subset, train_classes_subset, test_classes_subset = train_test_split(
-                train_df, train_classes, test_size=0.2, random_state=seed, stratify=train_classes
+            (
+                train_subset,
+                test_subset,
+                train_classes_subset,
+                test_classes_subset,
+            ) = train_test_split(
+                train_df,
+                train_classes,
+                test_size=0.2,
+                random_state=seed,
+                stratify=train_classes,
             )
-            train_subset, val_subset, train_classes_subset, val_classes_subset = train_test_split(
-                train_subset, train_classes_subset, test_size=0.25, random_state=seed, stratify=train_classes_subset
+            (
+                train_subset,
+                val_subset,
+                train_classes_subset,
+                val_classes_subset,
+            ) = train_test_split(
+                train_subset,
+                train_classes_subset,
+                test_size=0.25,
+                random_state=seed,
+                stratify=train_classes_subset,
             )
 
             test_df = test_subset
@@ -252,21 +329,34 @@ def run_classification(train_df, test_df, train_classes, test_classes, name_clas
             validation_classes = val_classes_subset
 
             if save_files:
-                save_validation_data(validation_df, validation_classes, classifier_type)
+                save_validation_data(
+                    validation_df, validation_classes, classifier_type
+                )
 
         else:
-            print("Performing train-test evaluation...")
+            print('Performing train-test evaluation...')
 
             # Split training data into train and validation sets
-            train_subset, val_subset, train_classes_subset, val_classes_subset = train_test_split(
-                train_df, train_classes, test_size=0.2, random_state=seed, stratify=train_classes
+            (
+                train_subset,
+                val_subset,
+                train_classes_subset,
+                val_classes_subset,
+            ) = train_test_split(
+                train_df,
+                train_classes,
+                test_size=0.2,
+                random_state=seed,
+                stratify=train_classes,
             )
 
             validation_df = val_subset
             validation_classes = val_classes_subset
 
             if save_files:
-                save_validation_data(validation_df, validation_classes, classifier_type)
+                save_validation_data(
+                    validation_df, validation_classes, classifier_type
+                )
 
     initial_output = f.getvalue()
 
@@ -275,15 +365,115 @@ def run_classification(train_df, test_df, train_classes, test_classes, name_clas
     # Cross-validation mode (test_df is None)
     if test_df is None:
         # Train model on training subset with cross-validation
-        classifier, min_max_scaler, label_encoder, _, train_output = train_classification_model(
-            train_subset, train_classes_subset, classifier_type, n_splits, n_repeats, seed, perform_cv=True
+        (
+            classifier,
+            min_max_scaler,
+            label_encoder,
+            _,
+            train_output,
+        ) = train_classification_model(
+            train_subset,
+            train_classes_subset,
+            classifier_type,
+            n_splits,
+            n_repeats,
+            seed,
+            perform_cv=True,
         )
     else:
         # Train model on full training data without cross-validation
-        classifier, min_max_scaler, label_encoder, _, train_output = train_classification_model(
-            train_subset, train_classes_subset, classifier_type, n_splits, n_repeats, seed, perform_cv=False
+        (
+            classifier,
+            min_max_scaler,
+            label_encoder,
+            _,
+            train_output,
+        ) = train_classification_model(
+            train_subset,
+            train_classes_subset,
+            classifier_type,
+            n_splits,
+            n_repeats,
+            seed,
+            perform_cv=False,
         )
 
     combined_output = initial_output + train_output
 
-    return predict_and_evaluate(classifier, min_max_scaler, label_encoder, test_df, test_classes, name_class, train_df, combined_output, classifier_type, validation_df, validation_classes, save_files)
+    return predict_and_evaluate(
+        classifier,
+        min_max_scaler,
+        label_encoder,
+        test_df,
+        test_classes,
+        name_class,
+        train_df,
+        combined_output,
+        classifier_type,
+        validation_df,
+        validation_classes,
+        save_files,
+    )
+
+
+def save_model(
+    classifier,
+    min_max_scaler,
+    label_encoder,
+    test_data=None,
+    output_path='model.pkl',
+    name_class=None,
+    output_text='',
+    train_df_columns=None,
+):
+    model_data = {
+        'classifier': classifier,
+        'scaler': min_max_scaler,
+        'encoder': label_encoder,
+        'test_data': test_data,
+        'name_class': name_class,
+        'output_text': output_text,
+        'train_df_columns': train_df_columns,
+    }
+    with open(output_path, 'wb') as f:
+        pickle.dump(model_data, f)
+
+
+def load_model(input_path='model.pkl'):
+    with open(input_path, 'rb') as f:
+        return pickle.load(f)
+
+
+def train_and_save(
+    train_df, train_classes, output_model_path, classifier_type='rf', seed=7
+):
+    # Split data if no test directory was provided
+    (
+        train_subset,
+        test_subset,
+        train_classes_subset,
+        test_classes_subset,
+    ) = train_test_split(
+        train_df,
+        train_classes,
+        test_size=0.2,
+        random_state=seed,
+        stratify=train_classes,
+    )
+
+    (
+        classifier,
+        min_max_scaler,
+        label_encoder,
+        _,
+        _,
+    ) = train_classification_model(
+        train_subset, train_classes_subset, classifier_type, perform_cv=True
+    )
+
+    test_data = (
+        (test_subset, test_classes_subset) if test_subset is not None else None
+    )
+    save_model(
+        classifier, min_max_scaler, label_encoder, test_data, output_model_path
+    )
