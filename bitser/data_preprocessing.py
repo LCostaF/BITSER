@@ -16,7 +16,7 @@ def prepare_dataframe(features):
              class_values : pandas.Series with the class labels for each sequence
              name_class : List of unique class names
     """
-    col_name = ['HistLBP' + str(i + 1) for i in range(256)] + [
+    col_name = ['HistLBP' + str(i) for i in range(256)] + [
         'BWS',
         'BWP',
         'CLASS',

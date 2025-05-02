@@ -4,7 +4,6 @@ from fnmatch import fnmatch
 import numpy as np
 from Bio import SeqIO
 from joblib import Parallel, delayed
-from tqdm import tqdm
 
 from bitser.sequence_utils import translate
 
@@ -213,18 +212,20 @@ def process_file(file_in, flank, translate_sequences, file_seq_counts):
     try:
         file_name = os.path.basename(file_in).split('.')[0]
         feature_batch = []
+        sequence_count = 0  # Counter for sequences processed in this file
 
         # Get expected sequence count for this file
         expected_count = file_seq_counts.get(file_in, 0)
 
         with open(file_in, encoding='utf-8') as handle:
             # Use tqdm for the sequence processing within each file
-            for record in tqdm(
-                SeqIO.parse(handle, 'fasta'),
-                total=expected_count,
-                desc=f'Processing {file_name}',
-                leave=True,
-            ):  # leave=False prevents the progress bar from persisting
+            # for record in tqdm(
+            #     SeqIO.parse(handle, 'fasta'),
+            #     total=expected_count,
+            #     desc=f'Processing {file_name}',
+            #     leave=True,
+            # ):  # leave=False prevents the progress bar from persisting
+            for record in SeqIO.parse(handle, 'fasta'):
                 seq_record = str(record.seq).upper()
                 hist_center = calc_hist(
                     seq_record, flank, translate_sequences, True

@@ -122,14 +122,6 @@ def train(
             help='Random seed for reproducibility (default: 7)',
         ),
     ] = 7,
-    test_size: Annotated[
-        float,
-        Option(
-            '--test-size',
-            '-t',
-            help='Fraction of data for testing if no separate test set (default: 0.2)',
-        ),
-    ] = 0.2,
 ):
     """
     Train a classification model from sequence data.
@@ -250,6 +242,7 @@ def test(
     classifier_type = type(model_data['classifier']).__name__.lower()
 
     console.print('[cyan]Running predictions...[/cyan]')
+
     _, _, _, complete_output = predict_and_evaluate(
         model_data['classifier'],
         model_data['scaler'],
@@ -268,32 +261,3 @@ def test(
     console.print(
         f'[bold green]✓ Prediction complete![/bold green] Results saved to output files'
     )
-
-
-@app.command(hidden=True)
-def run_tests(
-    verbose: Annotated[
-        bool,
-        Option(
-            '--verbose',
-            '-v',
-            help='Show detailed test output',
-        ),
-    ] = False,
-    path: Annotated[
-        str,
-        Option(
-            '--path',
-            '-p',
-            help='Test directory or specific test file',
-        ),
-    ] = 'tests/',
-):
-    """(For developers) Run the test suite"""
-    args = [path]
-    if verbose:
-        args.append('-v')
-
-    exit_code = pytest.main(args)
-    if exit_code != 0:
-        raise Exit(code=exit_code)
