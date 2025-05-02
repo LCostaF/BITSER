@@ -50,5 +50,5 @@ line_length = 79
 codeck = "blue --check --diff . && isort --check --diff ."
 codecg = "blue . && isort ."
 pre_test = "task codeck"
-test = "pytest .\\tests -s -x --cov=bitser -vv"
+test = "pytest tests -s -x --cov=bitser -vv"
 post_test = "coverage html"
