@@ -63,7 +63,7 @@ def test_column_names():
 
     df, _, _ = data_preprocessing.prepare_dataframe(mock_features)
 
-    expected_columns = ['HistLBP' + str(i + 1) for i in range(256)] + [
+    expected_columns = ['HistLBP' + str(i) for i in range(256)] + [
         'BWS',
         'BWP',
     ]
