@@ -7,9 +7,10 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.13"]
     steps:
     - uses: actions/checkout@v4
@@ -28,5 +29,10 @@ jobs:
     - name: Install dependencies
       run: poetry install --with dev
     
+    - name: List test files (debug)
+      run: |
+        ls -R tests  # Linux/macOS
+        dir tests /s  # Windows (fallback)
+    
     - name: Run tests
-      run: poetry run task test
+      run: poetry run pytest tests -s -x --cov=bitser -vv
