@@ -29,10 +29,17 @@ jobs:
     - name: Install dependencies
       run: poetry install --with dev
     
-    - name: List test files (debug)
+    - name: List test files
+      shell: bash
       run: |
-        ls -R tests  # Linux/macOS
-        dir tests /s  # Windows (fallback)
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          cmd /c "dir tests /s"
+        else
+          ls -R tests
+        fi
     
     - name: Run tests
       run: poetry run pytest tests -s -x --cov=bitser -vv
+      
+    - name: Upload coverage
+      uses: codecov/codecov-action@v4
