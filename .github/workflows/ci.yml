@@ -32,14 +32,25 @@ jobs:
 
     - name: Configure Windows PATH
       if: matrix.os == 'windows-latest'
-      shell: bash
-      run: echo "$APPDATA\Python\Scripts" >> $GITHUB_PATH
-      
+      shell: pwsh
+      run: |
+        echo "$HOME\.poetry\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "$env:APPDATA\Python\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "$env:LOCALAPPDATA\Programs\Python\Python313\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+    
     - name: Install dependencies
       shell: bash
       run: |
-        poetry --version
-        poetry install --with dev
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          # On Windows, find where poetry is installed
+          which poetry || echo "Poetry not found in PATH"
+          export PATH="$HOME/.poetry/bin:$APPDATA/Python/Scripts:$PATH"
+          python -m poetry --version
+          python -m poetry install --with dev
+        else
+          poetry --version
+          poetry install --with dev
+        fi
     
     - name: List test files
       shell: bash
@@ -51,7 +62,14 @@ jobs:
         fi
     
     - name: Run tests
-      run: poetry run pytest tests -s -x --cov=bitser -vv
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          export PATH="$HOME/.poetry/bin:$PATH"
+          python -m poetry run pytest tests -s -x --cov=bitser -vv
+        else
+          poetry run pytest tests -s -x --cov=bitser -vv
+        fi
       
     - name: Upload coverage
       uses: codecov/codecov-action@v4
