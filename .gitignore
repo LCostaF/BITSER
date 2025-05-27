@@ -1,0 +1,22 @@
+# Build artifacts
+*.pyd
+*.so
+*.cpp
+*.egg-info/
+*.pyc
+*.pyo
+*.c
+*.html
+build/
+dist/
+__pycache__/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
