@@ -105,3 +105,23 @@ def save_validation_data(validation_df, validation_classes, classifier_type):
     # Save to CSV
     validation_data.to_csv(file_path, index=False)
     print(f'Validation data saved to: {file_path}')
+
+
+def save_prediction_report(report_df, classifier_type):
+    """
+    Save prediction information to a CSV file.
+
+    Parameters:
+    -----------
+    report_df : pandas.DataFrame
+        DataFrame containing the prediciton information
+    classifier_type : str
+        Type of classifier used ('rf' or 'xgb')
+    """
+    results_dir = create_results_directory()
+    datetime_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+    file_name = f'{datetime_str}_{classifier_type}_predictions.csv'
+    file_path = os.path.join(results_dir, file_name)
+
+    report_df.to_csv(file_path, index=False)
+    return file_path

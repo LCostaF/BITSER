@@ -60,7 +60,7 @@ def test_train_command(
     mock_save_model, mock_save_output, mock_train, mock_prepare, mock_extract
 ):
     # Mock return values
-    mock_extract.return_value = {'features': 'mock'}
+    mock_extract.return_value = ({'features': 'mock'}, None, None)
     mock_df = MagicMock()
     mock_df.columns.tolist.return_value = [
         'feat1',
@@ -147,9 +147,20 @@ def test_predict_command(mock_predict, mock_prepare, mock_extract, mock_load):
         'name_class': ['class1', 'class2'],
         'output_text': 'previous_output',
     }
-    mock_extract.return_value = {'features': 'mock'}
+    mock_extract.return_value = (
+        {'features': 'mock'},
+        ['header1', 'header2'],
+        ['seq1', 'seq2'],
+    )
     mock_prepare.return_value = (MagicMock(), ['class1', 'class2'], {})
-    mock_predict.return_value = (None, None, None, 'complete_output')
+    mock_predict.return_value = (
+        None,
+        None,
+        None,
+        'complete_output',
+        ['pred1', 'pred2'],
+        ['true1', 'true2'],
+    )
 
     # Test predict command with test data
     result = runner.invoke(
@@ -199,7 +210,14 @@ def test_predict_command_with_saved_test_data(mock_predict, mock_load):
     mock_load.return_value = mock_model_data
 
     # Mock the return value from predict_and_evaluate
-    mock_predict.return_value = (None, None, None, 'complete_output')
+    mock_predict.return_value = (
+        None,
+        None,
+        None,
+        'complete_output',
+        ['pred1', 'pred2'],
+        ['true1', 'true2'],
+    )
 
     # Get type of classifier for classifier_type determination
     mock_model_data['classifier'].__class__.__name__ = 'RandomForestClassifier'

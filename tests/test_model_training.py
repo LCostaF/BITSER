@@ -252,6 +252,8 @@ def test_predict_and_evaluate(synthetic_data):
         min_max_scaler,
         label_encoder,
         complete_output,
+        predictions,
+        y_test,
     ) = model_training.predict_and_evaluate(
         classifier,
         min_max_scaler,
@@ -277,6 +279,8 @@ def test_predict_and_evaluate(synthetic_data):
         min_max_scaler,
         label_encoder,
         complete_output,
+        predictions,
+        y_test,
     ) = model_training.predict_and_evaluate(
         classifier,
         min_max_scaler,
@@ -321,6 +325,8 @@ def test_predict_and_evaluate_with_save_files(synthetic_data):
             min_max_scaler,
             label_encoder,
             complete_output,
+            predictions,
+            y_test,
         ) = model_training.predict_and_evaluate(
             classifier,
             min_max_scaler,

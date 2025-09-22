@@ -1,3 +1,6 @@
+import time
+
+import pandas as pd
 import pytest
 from rich.console import Console
 from rich.progress import track
@@ -7,7 +10,7 @@ from typing_extensions import Annotated
 from bitser import __version__
 from bitser.data_preprocessing import prepare_dataframe
 from bitser.feature_extraction import extract_features_from_path
-from bitser.file_utils import save_output_to_file
+from bitser.file_utils import save_output_to_file, save_prediction_report
 from bitser.model_training import (
     load_model,
     predict_and_evaluate,
@@ -131,13 +134,14 @@ def train(
     2. Model training with cross-validation
     3. Saving the trained model for future use
     """
+    start_time = time.time()
     console.print(
         f'[bold]Training model with {classifier} classifier...[/bold]'
     )
 
     # Extract features with progress indication
     console.print('[cyan]Extracting features...[/cyan]')
-    train_features = extract_features_from_path(input, flank, translate)
+    train_features, _, _ = extract_features_from_path(input, flank, translate)
     console.print('[bold green]✓ Feature extraction complete![/bold green]')
 
     console.print('[cyan]Preparing dataframe...[/cyan]')
@@ -177,6 +181,14 @@ def train(
 
     console.print(
         f'[bold green]✓ Success![/bold green] Model saved to [cyan]{output}[/cyan]'
+    )
+
+    end_time = time.time()  # End timing
+    elapsed_time = end_time - start_time
+    minutes, seconds = divmod(elapsed_time, 60)
+
+    console.print(
+        f'[bold]Total execution time:[/bold] {int(minutes)} minutes {seconds:.2f} seconds'
     )
 
 
@@ -222,13 +234,20 @@ def test(
     - Per-class performance metrics
     - Confusion matrix (if applicable)
     """
+    test_headers = None
+    test_sequences = None
+    start_time = time.time()
     console.print(f'[bold]Loading model from {model}...[/bold]')
     model_data = load_model(model)
     console.print(f'[bold green]✓ {model} loaded successfully![/bold green]')
 
     if data:
         console.print('[cyan]Processing test sequences...[/cyan]')
-        test_features = extract_features_from_path(data, flank, translate)
+        (
+            test_features,
+            test_headers,
+            test_sequences,
+        ) = extract_features_from_path(data, flank, translate)
         test_df, test_classes, _ = prepare_dataframe(test_features)
         console.print('[bold green]✓ Test sequences processed![/bold green]')
     else:
@@ -243,7 +262,7 @@ def test(
 
     console.print('[cyan]Running predictions...[/cyan]')
 
-    _, _, _, complete_output = predict_and_evaluate(
+    _, _, _, complete_output, predictions, y_test = predict_and_evaluate(
         model_data['classifier'],
         model_data['scaler'],
         model_data['encoder'],
@@ -260,4 +279,32 @@ def test(
 
     console.print(
         f'[bold green]✓ Prediction complete![/bold green] Results saved to output files'
+    )
+
+    # Generate and save CSV report
+    console.print('[cyan]Generating prediction report...[/cyan]')
+    report_df = pd.DataFrame(
+        {
+            'True Class': test_classes,  # Original class names
+            'Label': test_headers
+            if test_headers is not None
+            else [None] * len(test_classes),  # From FASTA headers
+            'Sequence': test_sequences
+            if test_sequences is not None
+            else [None] * len(test_classes),  # Actual sequences
+            'Predicted Class': predictions,  # Predicted class names
+        }
+    )
+
+    csv_path = save_prediction_report(report_df, classifier_type)
+    console.print(
+        f'[bold green]✓ Prediction report saved to {csv_path}![/bold green]'
+    )
+
+    end_time = time.time()  # End timing
+    elapsed_time = end_time - start_time
+    minutes, seconds = divmod(elapsed_time, 60)
+
+    console.print(
+        f'[bold]Total execution time:[/bold] {int(minutes)} minutes {seconds:.2f} seconds'
     )

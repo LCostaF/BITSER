@@ -1,8 +1,11 @@
 [project]
 name = "bitser"
-version = "0.2.0"
+version = "0.2.2"
 description = ""
 authors = [
+    {name = "LucasCFuganti",email = "lucascostafuganti@alunos.utfpr.edu.br"}
+]
+maintainers = [
     {name = "LucasCFuganti",email = "lucascostafuganti@alunos.utfpr.edu.br"}
 ]
 readme = "README.md"
@@ -17,6 +20,11 @@ dependencies = [
     "joblib (>=1.4.2,<2.0.0)",
     "matplotlib (>=3.10.1,<4.0.0)",
     "seaborn (>=0.13.2,<0.14.0)",
+    "pandas (>=2.2.3,<3.0.0)",
+    "cython (>=3.0.10,<4.0.0)",
+    "setuptools (>=80.4.0,<81.0.0)",
+    "wheel (>=0.45.1,<0.46.0)",
+    "scipy (>=1.16.1,<2.0.0)",
 ]
 
 [tool.poetry]
@@ -28,8 +36,17 @@ packages = [
 bitser = "bitser.cli:app"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = [
+    "poetry-core>=2.0.0,<3.0.0",
+    "setuptools>=69.0.0",
+    "numpy>=2.2.3",
+    "wheel",
+    "cython>=3.0.10, <3.1.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.build]
+script = "build.py"
+generate-setup-file = true
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"

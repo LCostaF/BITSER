@@ -77,7 +77,7 @@ def train_classification_model(
         elif classifier_type == 'xgb':
             num_class = len(label_encoder.classes_)
             classifier = xgb.XGBClassifier(
-                objective='multi:softprob',
+                objective='multi:softmax',
                 random_state=seed,
                 num_class=num_class,
                 n_jobs=-1,
@@ -303,32 +303,33 @@ def predict_and_evaluate(
             for idx, accuracy in enumerate(accuracy_per_class_val):
                 print(f'Class {name_class[idx]} accuracy: {accuracy:.4f}')
 
-        # Print overall feature importance
-        feature_importances = classifier.feature_importances_
-        feature_names = (
-            train_df.columns if train_df is not None else test_df.columns
-        )
-
-        feature_importances_df = pd.DataFrame(
-            {'Feature': feature_names, 'Importance': feature_importances}
-        ).sort_values(by='Importance', ascending=False)
-
-        derivatives = []
-
-        for i in range(len(feature_importances_df) - 1):
-            derivative = (
-                feature_importances_df['Importance'].iloc[i]
-                - feature_importances_df['Importance'].iloc[i + 1]
+        if hasattr(classifier, 'feature_importances_'):
+            # Print overall feature importance
+            feature_importances = classifier.feature_importances_
+            feature_names = (
+                train_df.columns if train_df is not None else test_df.columns
             )
-            derivatives.append(derivative)
 
-        derivatives.append(0.0)
+            feature_importances_df = pd.DataFrame(
+                {'Feature': feature_names, 'Importance': feature_importances}
+            ).sort_values(by='Importance', ascending=False)
 
-        feature_importances_df['Derivative'] = derivatives
+            derivatives = []
 
-        pd.set_option('display.max_rows', None)
-        print('\nOverall Feature Importance:')
-        print(feature_importances_df)
+            for i in range(len(feature_importances_df) - 1):
+                derivative = (
+                    feature_importances_df['Importance'].iloc[i]
+                    - feature_importances_df['Importance'].iloc[i + 1]
+                )
+                derivatives.append(derivative)
+
+            derivatives.append(0.0)
+
+            feature_importances_df['Derivative'] = derivatives
+
+            pd.set_option('display.max_rows', None)
+            print('\nOverall Feature Importance:')
+            print(feature_importances_df)
 
     evaluation_output = f.getvalue()
 
@@ -339,7 +340,16 @@ def predict_and_evaluate(
     if save_files:
         save_output_to_file(complete_output, classifier_type)
 
-    return classifier, min_max_scaler, label_encoder, complete_output
+    predictions = label_encoder.inverse_transform(y_pred_test)
+
+    return (
+        classifier,
+        min_max_scaler,
+        label_encoder,
+        complete_output,
+        predictions,
+        y_test,
+    )
 
 
 def save_model(
