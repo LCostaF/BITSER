@@ -11,6 +11,7 @@ from bitser.sequence_utils import translate
 
 POWERS_OF_TWO = 2 ** np.arange(8)
 
+
 def count_sequences_in_file(file_path):
     """
     Count the number of sequences in a FASTA file
@@ -45,7 +46,11 @@ def process_file(file_in, flank, translate_sequences, file_seq_counts):
 
         with open(file_in, encoding='utf-8') as handle:
             for record in SeqIO.parse(handle, 'fasta'):
-                seq_record = str(record.seq).upper()
+                seq_record = ''.join(
+                    ch
+                    for ch in str(record.seq).upper()
+                    if ch in {'A', 'C', 'G', 'T'}
+                )
                 headers.append(record.description)
                 sequences.append(seq_record)
                 hist_center = calc_hist(

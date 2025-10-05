@@ -165,6 +165,46 @@ def test_train_classification_model(synthetic_data):
         )
 
 
+def test_cross_validation_full_branch():
+    # Create a dataset large enough for normal CV path (no warnings)
+    X, y = make_classification(
+        n_samples=60,
+        n_features=5,
+        n_informative=3,
+        n_classes=3,
+        random_state=42,
+    )
+    df = pd.DataFrame(X, columns=[f'f{i}' for i in range(X.shape[1])])
+    classes = pd.Series(y)
+
+    (
+        classifier,
+        min_max_scaler,
+        label_encoder,
+        train_df_scaled,
+        output_text,
+    ) = model_training.train_classification_model(
+        df,
+        classes,
+        classifier_type='rf',
+        perform_cv=True,
+        n_splits=3,
+        n_repeats=2,
+        seed=42,
+    )
+
+    # Check that the cross-validation results were printed
+    assert 'Cross-validation scores:' in output_text
+    assert 'accuracy:' in output_text
+    assert 'precision_macro:' in output_text
+    assert 'recall_macro:' in output_text
+    assert 'f1_macro:' in output_text
+
+    # Check that the classifier was trained successfully
+    assert isinstance(classifier, RandomForestClassifier)
+    assert not train_df_scaled.empty
+
+
 def test_cross_validation_single_sample_class(small_imbalanced_data):
     """Test cross-validation with a class having only 1 sample."""
     train_df, train_classes = small_imbalanced_data

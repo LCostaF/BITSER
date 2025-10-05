@@ -1,6 +1,6 @@
 [project]
 name = "bitser"
-version = "0.2.2"
+version = "0.2.3"
 description = ""
 authors = [
     {name = "LucasCFuganti",email = "lucascostafuganti@alunos.utfpr.edu.br"}

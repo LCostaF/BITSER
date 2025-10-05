@@ -21,6 +21,30 @@ def test_doctests():
     assert result.failed == 0
 
 
+def test_count_sequences_in_file_valid(tmp_path):
+    fasta_path = tmp_path / 'sample.fasta'
+    fasta_path.write_text('>seq1\nATGC\n>seq2\nTTGG\n')
+
+    count = feature_extraction.count_sequences_in_file(str(fasta_path))
+    assert count == 2
+
+
+def test_count_sequences_in_file_empty(tmp_path):
+    fasta_path = tmp_path / 'empty.fasta'
+    fasta_path.write_text('')
+
+    count = feature_extraction.count_sequences_in_file(str(fasta_path))
+    assert count == 0
+
+
+def test_count_sequences_in_file_invalid_path():
+    # This should hit the exception and return 0
+    count = feature_extraction.count_sequences_in_file(
+        'nonexistent_file.fasta'
+    )
+    assert count == 0
+
+
 def test_calc_hist():
     seq = 'ATGGTGCATCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCCCTGTGGGGCAAGGTGAACGTGGATGAAGTTGGTGGTGAGGCCCTGGGCAGGCTGCTGGTGGTCTACCCTTGGACCCAGAGGTTCTTTGAGTCCTTTGGGGATCTGTCCACTCCTGATGCTGTTATGGGCAACCCTAAGGTGAAGGCTCATGGCAAGAAAGTGCTCGGTGCCTTTAGTGATGGCCTGGCTCACCTGGACAACCTCAAGGGCACCTTTGCCACACTGAGTGAGCTGCACTGTGACAAGCTGCACGTGGATCCTGAGAACTTCAGGCTCCTGGGCAACGTGCTGGTCTGTGTGCTGGCCCATCACTTTGGCAAAGAATTCACCCCACCAGTGCAGGCTGCCTATCAGAAAGTGGTGGCTGGTGTGGCTAATGCCCTGGCCCACAAGTATCAC'
     hist = calc_hist(seq)
