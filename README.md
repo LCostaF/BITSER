@@ -125,6 +125,7 @@ The updated project structure after running the predict command:
       └───20250401_094215_results_xgbclassifier.txt
 ```
 
+A sample dataset to test the method can be found in the `data_sarscov2` directory, divided into training and testing subsets.
 
 ##### Acknowledgements
 
