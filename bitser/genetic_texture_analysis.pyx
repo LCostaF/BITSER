@@ -55,41 +55,34 @@ EIIP_AMINO_ACID = {
     'D': 0.1263,
 }
 
-cpdef float calculate_nucleotide_value(str seq, int index):
+
+cpdef np.ndarray[DTYPE_t, ndim=1] return_tu_array(str subseq, dict eiip, int flank=8, bint add_center=False):
     """
-    Calculate nucleotide value as sum of current and next two nucleotides
+    Transform a neighborhood (subsequence) into a Texture Unit (array of 8 elements).
+
+    Args:
+        subseq: String, subsequence with 9 elements
+        eiip: The EIIP values dictionary
+        flank: Size of the sliding window that runs through the sequence
+        add_center: Boolean to determine if the center value is added when neighbor == center
+
+    Returns:
+        The array with the comparison values of the center and each neighbor
     """
     cdef:
-        float total = 0.0
-        int seq_len = len(seq)
-        int i
-
-    for i in range(index, min(index + 3, seq_len)):
-        total += EIIP_NUCLEOTIDE.get(seq[i], 0)
-    return total
-
-cpdef np.ndarray[DTYPE_t, ndim=1] return_tu_array(str subseq, int flank=8, bint add_center=False):
-    """
-    Transform a neighborhood into a Texture Unit array using new value calculation
-    """
-    cdef:
-        float center_val
-        list neighbor_vals
+        float center
+        list neighbors
         np.ndarray[DTYPE_t, ndim=1] result
         int i
 
-    # Calculate values for all positions in subsequence
-    cdef int sub_len = len(subseq)
-    cdef list values = [calculate_nucleotide_value(subseq, j) for j in range(sub_len)]
+    center = eiip.get(subseq[0], 0)
+    neighbors = [eiip.get(c, 0) for c in subseq[1:flank + 1]]
 
-    center_val = values[0]
-    neighbor_vals = values[1:flank + 1]
-    
     result = np.zeros(flank, dtype=np.uint8)
     for i in range(flank):
-        if neighbor_vals[i] >= center_val:
+        if neighbors[i] >= center:
             result[i] = 1
-    
+
     return result
 
 
@@ -118,7 +111,7 @@ cpdef int calc_tu_number(np.ndarray[DTYPE_t, ndim=1] tu_array, int flank=8):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef list calc_hist(str seq, int flank=24, bint translated=False, bint add_center=False):
+cpdef list calc_hist(str seq, int flank=8, bint translated=False, bint add_center=False):
     """
     Calculate the texture unit histogram.
     """
@@ -128,23 +121,20 @@ cpdef list calc_hist(str seq, int flank=24, bint translated=False, bint add_cent
         np.ndarray[DTYPE_t, ndim=1] tu_numbers
         int i, length
         np.ndarray[np.int64_t, ndim=1] histogram
-
-    flank=24
     
     # Only use EIIP for amino acids if translated
     if translated:
         eiip = EIIP_AMINO_ACID
         processed_seq = translate(seq.encode('utf-8')).decode('utf-8')
     else:
-        # For nucleotide sequences, we don't use eiip anymore
-        pass
+        eiip = EIIP_NUCLEOTIDE
     
     length = len(processed_seq) - flank
     tu_numbers = np.zeros(length, dtype=np.uint8)
     
-    for i in range(0, length, 3):
+    for i in range(length):
         tu_numbers[i] = calc_tu_number(
-            return_tu_array(processed_seq[i:i + flank + 1], flank, add_center),
+            return_tu_array(processed_seq[i:i + flank + 1], eiip, flank, add_center),
             flank
         )
     

@@ -9,7 +9,7 @@ from typing_extensions import Annotated
 
 from bitser import __version__
 from bitser.data_preprocessing import prepare_dataframe
-from bitser.feature_extraction import extract_features_from_path
+from bitser.feature_extraction import extract_features_from_metadata
 from bitser.file_utils import save_output_to_file, save_prediction_report
 from bitser.model_training import (
     load_model,
@@ -68,7 +68,7 @@ def train(
         Option(
             '--input',
             '-i',
-            help='Directory containing training FASTA files (e.g., "./training_data/")',
+            help='Dataset directory (must contain metadata.tsv and sequences/ folder)',
         ),
     ],
     output: Annotated[
@@ -141,7 +141,12 @@ def train(
 
     # Extract features with progress indication
     console.print('[cyan]Extracting features...[/cyan]')
-    train_features, _, _ = extract_features_from_path(input, flank, translate)
+    train_features, _, _ = extract_features_from_metadata(
+        input,
+        split="train",
+        flank=flank,
+        translate_sequences=translate,
+    )
     console.print('[bold green]✓ Feature extraction complete![/bold green]')
 
     console.print('[cyan]Preparing dataframe...[/cyan]')
@@ -207,7 +212,7 @@ def test(
         Option(
             '--data',
             '-d',
-            help='Directory containing test FASTA files',
+            help='Dataset directory (must contain metadata.tsv and sequences/ folder)',
         ),
     ] = None,
     flank: Annotated[
@@ -243,11 +248,12 @@ def test(
 
     if data:
         console.print('[cyan]Processing test sequences...[/cyan]')
-        (
-            test_features,
-            test_headers,
-            test_sequences,
-        ) = extract_features_from_path(data, flank, translate)
+        test_features, test_headers, test_sequences = extract_features_from_metadata(
+            data,
+            split="test",
+            flank=flank,
+            translate_sequences=translate,
+        )
         test_df, test_classes, _ = prepare_dataframe(test_features)
         console.print('[bold green]✓ Test sequences processed![/bold green]')
     else:
