@@ -1,15 +1,17 @@
 [project]
 name = "bitser"
 version = "0.3.4"
-description = ""
+description = "Binary Pattern Sequence Recognition for biological sequences"
 authors = [
     {name = "LucasCFuganti",email = "lucascostafuganti@alunos.utfpr.edu.br"}
 ]
 maintainers = [
     {name = "LucasCFuganti",email = "lucascostafuganti@alunos.utfpr.edu.br"}
 ]
+license = "MIT License"
 readme = "README.md"
 requires-python = ">=3.13,<4.0"
+keywords = ["bioinformatics", "machine learning", "DNA", "RNA", "protein", "classification"]
 dependencies = [
     "numpy (>=2.2.3,<3.0.0)",
     "bio (>=1.7.1,<2.0.0)",
@@ -26,6 +28,13 @@ dependencies = [
     "wheel (>=0.45.1,<0.46.0)",
     "scipy (>=1.16.1,<2.0.0)",
 ]
+
+[project.urls]
+Homepage = "https://github.com/LCostaF/BITSER"
+Repository = "https://github.com/LCostaF/BITSER"
+
+[project.scripts]
+bitser = "bitser.cli:app"
 
 [tool.poetry]
 packages = [
