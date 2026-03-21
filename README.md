@@ -5,7 +5,7 @@
 
 #### **BI**nary pa**T**tern **S**equenc**E** **R**ecognition
 
-![image_info](https://img.shields.io/badge/bitser-v0.3.4-blue)
+![image_info](https://img.shields.io/badge/bitser-v0.2.4-blue)
 
 </div>
 
