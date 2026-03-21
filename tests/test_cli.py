@@ -112,10 +112,11 @@ def test_metadata_command_requires_delim():
         app,
         ['metadata', '--dataset', '/tmp/fake'],
     )
-    assert result.exit_code == 2   # ← changed from 1 to 2
-    assert (
-        '--class-delim' in result.stdout.lower()
-    )   # or check the usage message
+    assert result.exit_code == 2
+
+    lower = result.stdout.lower()
+    assert 'missing option' in lower
+    assert 'class-delim' in lower
     assert (
         'missing' in result.stdout.lower()
         or 'required' in result.stdout.lower()
