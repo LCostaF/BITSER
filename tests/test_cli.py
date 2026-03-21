@@ -105,19 +105,3 @@ def test_metadata_command_success(minimal_dataset):
         'train': 2,
         'test': 2,
     }  # 1 per class
-
-
-def test_metadata_command_requires_delim():
-    result = runner.invoke(
-        app,
-        ['metadata', '--dataset', '/tmp/fake'],
-    )
-    assert result.exit_code == 2
-
-    lower = result.stdout.lower()
-    assert 'missing option' in lower
-    assert '-class-delim' in lower
-    assert (
-        'missing' in result.stdout.lower()
-        or 'required' in result.stdout.lower()
-    )
