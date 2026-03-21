@@ -116,7 +116,7 @@ def test_metadata_command_requires_delim():
 
     lower = result.stdout.lower()
     assert 'missing option' in lower
-    assert 'class-delim' in lower
+    assert '-class-delim' in lower
     assert (
         'missing' in result.stdout.lower()
         or 'required' in result.stdout.lower()
