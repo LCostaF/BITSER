@@ -11,6 +11,7 @@ from bitser import __version__
 from bitser.data_preprocessing import prepare_dataframe
 from bitser.feature_extraction import extract_features_from_metadata
 from bitser.file_utils import save_output_to_file, save_prediction_report
+from bitser.metadata_utils import generate_metadata
 from bitser.model_training import (
     load_model,
     predict_and_evaluate,
@@ -59,6 +60,77 @@ def main(
     console.print(
         '[bold]Welcome to BITSER![/bold] Type [cyan]bitser --help[/cyan] to see available commands.'
     )
+
+
+@app.command()
+def metadata(
+    dataset: Annotated[
+        str,
+        Option(
+            '--dataset',
+            '-d',
+            help='Dataset directory containing sequences/ folder',
+        ),
+    ],
+    class_delim: Annotated[
+        str,
+        Option(
+            '--class-delim',
+            '-delim',
+            help='Delimiter string before the class label (required). Examples: " ", "|", "genotype "',
+        ),
+    ],
+    class_which: Annotated[
+        int,
+        Option(
+            '--class-which',
+            '-which',
+            help='Which occurrence of the delimiter to use (1 = first, -1 = last, default: 1)',
+        ),
+    ] = 1,
+    train_count: Annotated[
+        int,
+        Option(
+            '--train-count',
+            '-n',
+            help='Number of sequences per class to use for training',
+        ),
+    ] = 100,
+    seed: Annotated[
+        int,
+        Option(
+            '--seed',
+            help='Random seed for reproducibility',
+        ),
+    ] = 7,
+):
+    """
+    Generate metadata.tsv describing dataset splits using FASTA header parsing.
+
+    You must specify --class-delim to tell the tool how to find the class label.
+    The class token is automatically cleaned to contain only alphanumeric characters.
+    """
+    if not class_delim:
+        console.print('[red bold]Error:[/red bold] --class-delim is required.')
+        console.print('Examples:')
+        console.print('  --class-delim " " --class-which 1')
+        console.print('  --class-delim "|" --class-which -1')
+        console.print('  --class-delim "genotype " --class-which 1')
+        raise Exit(code=1)
+
+    console.print('[cyan]Generating metadata table...[/cyan]')
+    console.print(f'  delimiter   : [yellow]{class_delim!r}[/yellow]')
+    console.print(f'  occurrence  : [yellow]{class_which}[/yellow]')
+
+    path = generate_metadata(
+        dataset,
+        train_count=train_count,
+        seed=seed,
+        class_delim=class_delim,
+        class_which=class_which,
+    )
+
+    console.print(f'[bold green]✓ metadata.tsv created at {path}[/bold green]')
 
 
 @app.command()
@@ -143,7 +215,7 @@ def train(
     console.print('[cyan]Extracting features...[/cyan]')
     train_features, _, _ = extract_features_from_metadata(
         input,
-        split="train",
+        split='train',
         flank=flank,
         translate_sequences=translate,
     )
@@ -248,9 +320,13 @@ def test(
 
     if data:
         console.print('[cyan]Processing test sequences...[/cyan]')
-        test_features, test_headers, test_sequences = extract_features_from_metadata(
+        (
+            test_features,
+            test_headers,
+            test_sequences,
+        ) = extract_features_from_metadata(
             data,
-            split="test",
+            split='test',
             flank=flank,
             translate_sequences=translate,
         )
