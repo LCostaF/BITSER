@@ -1,6 +1,6 @@
 [project]
 name = "bitser"
-version = "0.3.6"
+version = "0.3.7"
 description = "Binary Pattern Sequence Recognition for biological sequences"
 authors = [
     {name = "LucasCFuganti",email = "lucascostafuganti@alunos.utfpr.edu.br"}
@@ -46,16 +46,15 @@ bitser = "bitser.cli:app"
 
 [build-system]
 requires = [
-    "poetry-core>=2.0.0,<3.0.0",
     "setuptools>=69.0.0",
-    "numpy>=2.2.3",
     "wheel",
-    "cython>=3.0.10, <3.1.0"]
-build-backend = "poetry.core.masonry.api"
+    "cython>=3.0.10,<3.1.0",
+    "numpy>=2.2.3"
+]
+build-backend = "setuptools.build_meta"
 
-[tool.poetry.build]
-script = "build.py"
-generate-setup-file = false
+[tool.setuptools.packages.find]
+exclude = ["tests*", "*.tests*"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"

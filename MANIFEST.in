@@ -1,0 +1,12 @@
+include bitser/genetic_texture_analysis.pyx
+include bitser/genetic_texture_analysis.cpp
+
+prune tests
+prune alt_codes
+prune datasets
+prune datasets_val
+prune datasets_metadata
+prune results_compare
+prune scores
+
+global-exclude __pycache__ *.py[cod]
