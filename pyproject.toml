@@ -1,6 +1,6 @@
 [project]
 name = "bitser"
-version = "0.3.7"
+version = "0.3.8"
 description = "Binary Pattern Sequence Recognition for biological sequences"
 authors = [
     {name = "LCostaF",email = "lucascostafuganti@alunos.utfpr.edu.br"}
@@ -49,6 +49,9 @@ requires = [
     "numpy>=2.2.3"
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
 
 [tool.setuptools.packages.find]
 exclude = ["tests*", "*.tests*"]
