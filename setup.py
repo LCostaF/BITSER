@@ -1,7 +1,8 @@
-from setuptools import setup, Extension, find_packages
-from Cython.Build import cythonize
-import numpy
 import sys
+
+import numpy
+from Cython.Build import cythonize
+from setuptools import Extension, find_packages, setup
 
 extra_compile_args = ['-O3']
 if sys.platform != 'win32':
@@ -18,8 +19,8 @@ extensions = [
 ]
 
 setup(
-    name="bitser",
-    packages=["bitser"],
+    name='bitser',
+    packages=['bitser'],
     ext_modules=cythonize(
         extensions,
         compiler_directives={
@@ -33,7 +34,5 @@ setup(
     ),
     include_dirs=[numpy.get_include()],
     zip_safe=False,
-    exclude_package_data={
-        "bitser": ["*.pyx", "*.cpp"]
-    },
+    exclude_package_data={'bitser': ['*.pyx', '*.cpp']},
 )
