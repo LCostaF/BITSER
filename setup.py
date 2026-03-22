@@ -34,6 +34,5 @@ setup(
     ),
     include_dirs=[numpy.get_include()],
     zip_safe=False,
-    package_data={'bitser': ['*.pyd', '*.so']},
-    exclude_package_data={'bitser': ['*.pyx', '*.cpp']},
+    package_data={'bitser': ['*.pyd', '*.so', '*.pyx']},
 )
