@@ -3,10 +3,10 @@ name = "bitser"
 version = "0.3.7"
 description = "Binary Pattern Sequence Recognition for biological sequences"
 authors = [
-    {name = "LucasCFuganti",email = "lucascostafuganti@alunos.utfpr.edu.br"}
+    {name = "LCostaF",email = "lucascostafuganti@alunos.utfpr.edu.br"}
 ]
 maintainers = [
-    {name = "LucasCFuganti",email = "lucascostafuganti@alunos.utfpr.edu.br"}
+    {name = "LCostaF",email = "lucascostafuganti@alunos.utfpr.edu.br"}
 ]
 license = {text = "MIT"}
 readme = "README.md"
@@ -40,9 +40,6 @@ bitser = "bitser.cli:app"
 packages = [
     {include = "bitser"}
 ]
-
-[tool.poetry.scripts]
-bitser = "bitser.cli:app"
 
 [build-system]
 requires = [
