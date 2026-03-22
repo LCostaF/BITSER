@@ -27,6 +27,9 @@ jobs:
     
     - name: Install dependencies
       run: poetry install --with dev
+
+    - name: Build extensions
+      run: poetry run python build.py build_ext --inplace
     
     - name: Run tests
       run: poetry run task test
