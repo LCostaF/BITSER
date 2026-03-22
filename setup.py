@@ -20,7 +20,7 @@ extensions = [
 
 setup(
     name='bitser',
-    packages=['bitser'],
+    packages=find_packages(include=["bitser", "bitser.*"]),
     ext_modules=cythonize(
         extensions,
         compiler_directives={

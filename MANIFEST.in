@@ -1,5 +1,6 @@
 include bitser/genetic_texture_analysis.pyx
 include bitser/genetic_texture_analysis.cpp
+recursive-include bitser *.pyx *.pxd *.cpp *.h
 
 prune tests
 prune alt_codes
