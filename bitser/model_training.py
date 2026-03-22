@@ -258,9 +258,11 @@ def predict_and_evaluate(
         y_test = label_encoder.transform(test_classes)
         y_pred_test = classifier.predict(test_df_scaled)
 
+        target_names = [str(c) for c in name_class]
+
         print('\nTest set results:')
         print(
-            f'Classification report:\n{classification_report(y_test, y_pred_test, target_names=name_class)}'
+            f'Classification report:\n{classification_report(y_test, y_pred_test, target_names=target_names)}'
         )
 
         # Print confusion matrix

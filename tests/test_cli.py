@@ -98,7 +98,13 @@ def test_metadata_command_success(minimal_dataset):
     assert metadata_path.is_file()
 
     df = pd.read_csv(metadata_path, sep='\t')
-    assert list(df.columns) == ['sample-id', 'fasta_path', 'class', 'split']
+    assert list(df.columns) == [
+        'sample-id',
+        'fasta_path',
+        'class',
+        'split',
+        'record_index',
+    ]
     assert len(df) == 4
     assert set(df['class'].unique()) == {'class1', 'class2'}
     assert df['split'].value_counts().to_dict() == {

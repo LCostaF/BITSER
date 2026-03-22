@@ -35,6 +35,7 @@ def small_dataset(tmp_path: Path):
                 'fasta_path': f'sequences/{fasta_path.name}',
                 'class': f'class{i%2 + 1}',
                 'split': 'train' if i < 2 else 'test',
+                'record_index': i,
             }
         )
 

@@ -13,56 +13,45 @@ from bitser.sequence_utils import translate
 POWERS_OF_TWO = 2 ** np.arange(8)
 
 
-def process_file(file_in, allowed_ids, class_map, flank, translate_sequences):
+def process_file(
+    file_in, allowed_indices, class_map_by_index, flank, translate_sequences
+):
     """
-    Extract features from sequences in a FASTA file, restricted to allowed IDs.
-
-    :param file_in: Path to FASTA file
-    :param allowed_ids: Set of sequence IDs to process
-    :param class_map: Dict mapping sequence ID -> class label
-    :param flank: Sliding window size
-    :param translate_sequences: Whether to translate nucleotide sequences
+    Now: allowed_indices = set of record_index values we care about
+    class_map_by_index = {record_index: class_label, ...}
     """
+    feature_batch = []
+    headers = []
+    sequences = []
 
     try:
-        feature_batch = []
-        headers = []
-        sequences = []
-
-        with open(file_in, encoding='utf-8') as handle:
-            for record in SeqIO.parse(handle, 'fasta'):
-
-                seq_id = record.id
-
-                if seq_id not in allowed_ids:
+        with open(file_in) as handle:
+            for i, record in enumerate(SeqIO.parse(handle, 'fasta')):
+                if i not in allowed_indices:
                     continue
 
-                seq_record = ''.join(
-                    ch
-                    for ch in str(record.seq).upper()
-                    if ch in {'A', 'C', 'G', 'T'}
+                seq_str = ''.join(
+                    ch for ch in str(record.seq).upper() if ch in 'ACGT'
                 )
 
                 headers.append(record.description)
-                sequences.append(seq_record)
+                sequences.append(seq_str)
 
                 hist_center = calc_hist(
-                    seq_record, flank, translate_sequences, True
+                    seq_str, flank, translate_sequences, True
                 )
-
                 bws = calc_bws(hist_center)
                 bwp = calc_bwp(hist_center)
 
-                class_label = class_map[seq_id]
+                class_label = class_map_by_index[i]
 
                 concat_features = hist_center + [bws, bwp, class_label]
-
                 feature_batch.append(concat_features)
 
         return np.array(feature_batch, dtype=object), headers, sequences
 
     except Exception as e:
-        print(f'Error processing file {file_in}: {e}')
+        print(f'Error processing {file_in}: {e}')
         return np.array([]), [], []
 
 
@@ -102,14 +91,11 @@ def extract_features_from_metadata(
     tasks = []
 
     for fasta_path, group in grouped:
-
         full_path = base_dir / fasta_path
+        allowed_indices = set(group['record_index'])
+        class_map_by_index = dict(zip(group['record_index'], group['class']))
 
-        allowed_ids = set(group['sample-id'])
-
-        class_map = dict(zip(group['sample-id'], group['class']))
-
-        tasks.append((full_path, allowed_ids, class_map))
+        tasks.append((full_path, allowed_indices, class_map_by_index))
 
     results = Parallel(n_jobs=n_jobs)(
         delayed(process_file)(

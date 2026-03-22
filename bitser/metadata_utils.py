@@ -4,6 +4,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List
 
+from Bio import SeqIO
+
 
 def extract_class_from_header(
     header: str,
@@ -85,7 +87,7 @@ def generate_metadata(
 
     random.seed(seed)
 
-    rows: List[Dict[str, str]] = []
+    rows = []
     seen_samples: set[str] = set()
 
     fasta_files = list(seq_dir.glob('*.f*'))  # .fasta, .fa, .fna, .fas...
@@ -94,44 +96,35 @@ def generate_metadata(
 
     for fasta in fasta_files:
         fasta_rel = f'sequences/{fasta.name}'
+        full_path = seq_dir / fasta.name
 
-        with fasta.open(encoding='utf-8', errors='replace') as fh:
-            for line in fh:
-                line = line.rstrip()
-                if line.startswith('>'):
-                    header = line[1:].strip()
-                    class_label = extract_class_from_header(
-                        header=header,
-                        delim=class_delim,
-                        which=class_which,
-                    )
+        for i, record in enumerate(SeqIO.parse(full_path, 'fasta')):
+            header = record.description.strip()   # full header without >
 
-                    if class_label is None:
-                        print(
-                            f'Warning: could not extract class from header: {header}'
-                        )
-                        continue
+            class_label = extract_class_from_header(
+                header=header,
+                delim=class_delim,
+                which=class_which,
+            )
+            if class_label is None:
+                continue
 
-                    # Use full header as base for sample-id
-                    base_id = header
+            sample_id = header
+            counter = 1
+            while sample_id in seen_samples:
+                sample_id = f'{sample_id}_{counter}'
+                counter += 1
+            seen_samples.add(sample_id)
 
-                    # Make sample-id unique by appending counter if needed
-                    sample_id = base_id
-                    counter = 1
-                    while sample_id in seen_samples:
-                        counter += 1
-                        sample_id = f'{base_id}_{counter}'
-
-                    seen_samples.add(sample_id)
-
-                    rows.append(
-                        {
-                            'sample-id': sample_id,
-                            'fasta_path': fasta_rel,
-                            'class': class_label,
-                            'split': '',  # will be filled later
-                        }
-                    )
+            rows.append(
+                {
+                    'sample-id': sample_id,
+                    'fasta_path': fasta_rel,
+                    'class': class_label,
+                    'split': '',
+                    'record_index': i,
+                }
+            )
 
     if not rows:
         raise ValueError('No valid sequences found after header parsing.')
@@ -153,7 +146,13 @@ def generate_metadata(
     with metadata_path.open('w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(
             f,
-            fieldnames=['sample-id', 'fasta_path', 'class', 'split'],
+            fieldnames=[
+                'sample-id',
+                'fasta_path',
+                'class',
+                'split',
+                'record_index',
+            ],
             delimiter='\t',
             lineterminator='\n',
         )
