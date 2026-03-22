@@ -31,7 +31,11 @@ This tool is targeted for usage by biologists, researchers and other professiona
 
 ## Installation
 
+```bash
+pip install bitser
+```
 
+After the installation, run `bitser --help` to see all the available commands.
 
 ## CLI commands
 
@@ -39,93 +43,89 @@ BITSER offers the following commands:
 
 | COMMAND | FUNCTION                                         |
 |---------|--------------------------------------------------|
-| train   | Train a classification model from sequence data  |
-| predict | Predict classes for new sequences using a trained model |
+| `metadata` | Parse FASTA headers and create `metadata.tsv` with train/test splits   |
+| `train`    | Extract features and train a classification model                      |
+| `predict`  | Load a trained model and predict classes on new sequences              |
+
+### `metadata` command
+
+This command must be run on your training dataset directory.
+
+The dataset directory **must contain a `sequences/` subfolder** with the FASTA files.
+
+The command scans all `.fasta` files in the `sequences/` subfolder, parses headers to extract class labels, and creates a `metadata.tsv` file, which is used for the `train` and `predict` commands.
+
+Example structure:
+
+```
+dataset/
+├── sequences/
+│ ├── class_a.fasta
+│ └── class_b.fasta
+```
+
+After executing the command:
+
+```
+dataset/
+├── sequences/
+│ ├── class_a.fasta
+│ └── class_b.fasta
+└──metadata.tsv
+```
 
 ### `train` command
 
-This command initiates the feature extraction and model training workflow, and should be used on a training dataset. It has the following parameters:
+This command initiates the feature extraction and model training workflow.
 
-| PARAMETER | DESCRIPTION                                               | OPTIONAL | DEFAULT VALUE |
-|-----------|-----------------------------------------------------------|:--------:|-----------|
-| ``input`` | Path to the directory containing FASTA files for training |    ❌     |           |
-| ``output`` | Path to save the trained model to a file                  |     ✔️     | model.pkl |
-| ``classifier``| Type of classifier that will be used to train the model   | ✔️ | xgb       |
-| ``flank`` | How many characters in a sequence will be compared to the leftmost member of the sliding window | ✔️ | 8
-| ``translate`` | Whether the sequence should be translated to aminoacids or not | ✔️ | False |
+Training performs the following steps:
+
+1. Feature extraction using sliding windows;
+2. Construction of the training feature matrix;
+3. Model training using cross-validation;
+4. Saving the trained model.
+
+#### Parameters
+
+| Parameter | Description | Required | Default |
+|---|---|:--:|---|
+| `--input`, `-i` | Path to the dataset directory containing `metadata.tsv` and `sequences/` | ✔ | |
+| `--output`, `-o` | Path to save the trained model | | `model.pkl` |
+| `--classifier`, `-c` | Classifier algorithm | | `xgb` |
+| `--flank`, `-f` | Number of neighbors compared to the reference character in the sliding window | | `8` |
+| `--translate / --no-translate` | Translate nucleotide sequences to proteins before feature extraction | | `False` |
+| `--splits`, `-s` | Number of folds used for cross-validation | | `10` |
+| `--repeats`, `-r` | Number of cross-validation repetitions | | `10` |
+| `--seed` | Random seed for reproducibility | | `7` |
+
+#### Output
+
+- Trained model file (`.pkl`);
+- Training evaluation results stored in the `results/` directory.
 
 ### `predict` command
 
-This command initiates the feature extraction on the testing dataset, and then predicts classes based on the trained model. It has the following parameters:
+Uses a trained model to classify sequences from a testing dataset.
 
-| PARAMETER      | DESCRIPTION                                                                                                                                    | OPTIONAL  | DEFAULT VALUE |
-|----------------|------------------------------------------------------------------------------------------------------------------------------------------------|:---------:|--|
-| ``model``      | Path to trained model obtained after training                                                                                                  |     ❌     |  |
-| ``data``       | Path to the directory containing FASTA files for testing                                                                                       |     ❌     |  |
-| ``flank``      | How many characters in a sequence will be compared to the leftmost member of the sliding window (must match value used in the `train` command) |    ✔️     | 8
-| ``translate``  | Whether the sequence should be translated to aminoacids or not (must match value used in the `train`command)                                   |    ✔️     | False |
+Feature extraction settings must match those used during training.
 
-## Example Usage
+#### Parameters
 
-Considering the following example project structure:
+| Parameter | Description | Required | Default |
+|---|---|:--:|---|
+| `--model`, `-m` | Path to the trained model file | ✔ | |
+| `--data`, `-d` | Dataset directory containing `metadata.tsv` and `sequences/` | ✔ | |
+| `--flank`, `-f` | Number of neighbors compared to the reference character in the sliding window, must match value used during training | | `8` |
+| `--translate / --no-translate` | Must match the translation setting used during training | | `False` |
 
-```
-──project
-  └───datasets
-      ├───training_data
-      │   ├───class_a.fasta
-      │   └───class_b.fasta
-      └───testing_data
-          ├───class_a.fasta
-          └───class_b.fasta  
-```
+#### Output
 
-BITSER could be run from the project root, with the following command:
+The prediction step generates:
 
-`bitser train --input .\datasets\training_data\ --output example_model.pkl`
-
-The training data would be used to construct a classification model, which are saved to a Pickle file. The accuracy values for cross-validation would be saved to a text file.
-
-The updated project structure after running the train command:
-
-```
-──project
-  ├───datasets
-  │   ├───training_data
-  │   │   ├───class_a.fasta
-  │   │   └───class_b.fasta
-  │   └───testing_data
-  │       ├───class_a.fasta
-  │       └───class_b.fasta
-  ├───example_model.pkl
-  └───results
-      └───20250401_094215_results_xgb.txt
-```
-
-The saved model can then be used to predict class values, with the following command:
-
-`bitser predict --model example_model.pkl --data .\datasets\testing_data\`
-
-The model would be used to evaluate the testing data, and classify sequences accordingly. The classification results, per-class accuracies, and feature importance data are saved to a text file.
-
-The updated project structure after running the predict command:
-
-```
-──project
-  ├───datasets
-  │   ├───training_data
-  │   │   ├───class_a.fasta
-  │   │   └───class_b.fasta
-  │   └───testing_data
-  │       ├───class_a.fasta
-  │       └───class_b.fasta
-  ├───example_model.pkl
-  └───results
-      ├───20250401_094215_results_xgb.txt
-      └───20250401_094215_results_xgbclassifier.txt
-```
-
-A sample dataset to test the method can be found in the `data_sarscov2` directory, divided into training and testing subsets.
+- Classification results;
+- Per-class performance metrics;
+- Feature importance;
+- Prediction report (CSV).
 
 ##### Acknowledgements
 
