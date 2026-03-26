@@ -111,7 +111,7 @@ cpdef int calc_tu_number(np.ndarray[DTYPE_t, ndim=1] tu_array, int flank=8):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cpdef list calc_hist(str seq, int flank=8, bint translated=False, bint add_center=False):
+cpdef tuple calc_hist(str seq, int flank=8, bint translated=False, bint add_center=False):
     """
     Calculate the texture unit histogram.
     """
@@ -121,15 +121,15 @@ cpdef list calc_hist(str seq, int flank=8, bint translated=False, bint add_cente
         np.ndarray[DTYPE_t, ndim=1] tu_numbers
         int i, length
         np.ndarray[np.int64_t, ndim=1] histogram
-    
-    # Only use EIIP for amino acids if translated
+        np.ndarray[np.int64_t, ndim=2] transition_matrix
+
     if translated:
         eiip = EIIP_AMINO_ACID
         processed_seq = translate(seq.encode('utf-8')).decode('utf-8')
     else:
         eiip = EIIP_NUCLEOTIDE
     
-    length = len(processed_seq) - flank
+    length = max(0, len(processed_seq) - flank)
     tu_numbers = np.zeros(length, dtype=np.uint8)
     
     for i in range(length):
@@ -139,7 +139,13 @@ cpdef list calc_hist(str seq, int flank=8, bint translated=False, bint add_cente
         )
     
     histogram = np.bincount(tu_numbers, minlength=256)
-    return histogram.tolist()
+    
+    transition_matrix = np.zeros((256, 256), dtype=np.int64)
+    if length > 1:
+        for i in range(length - 1):
+            transition_matrix[tu_numbers[i], tu_numbers[i + 1]] += 1
+    
+    return (histogram.tolist(), tu_numbers.tolist(), transition_matrix.tolist())
 
 
 @cython.boundscheck(False)
