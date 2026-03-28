@@ -1,15 +1,14 @@
 import os
+import pickle
 from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import pickle
 from Bio import SeqIO
 from joblib import Parallel, delayed
 
 from bitser.genetic_texture_analysis import calc_bwp, calc_bws, calc_hist
-
 
 POWERS_OF_TWO = 2 ** np.arange(8)
 
@@ -113,15 +112,17 @@ def extract_features_from_metadata(
     all_headers = [h for sublist in headers_list for h in sublist]
     all_sequences = [s for sublist in sequences_list for s in sublist]
     all_tu_orders = [t for sublist in tu_orders_list for t in sublist]
-    all_trans_matrices = [m for sublist in trans_matrices_list for m in sublist]
+    all_trans_matrices = [
+        m for sublist in trans_matrices_list for m in sublist
+    ]
 
-    log_path = base_dir / "tu_transition_log.pkl"
+    log_path = base_dir / 'tu_transition_log.pkl'
     log_data = {
-        "headers": all_headers,
-        "tu_orders": all_tu_orders,
-        "transition_matrices": all_trans_matrices,
+        'headers': all_headers,
+        'tu_orders': all_tu_orders,
+        'transition_matrices': all_trans_matrices,
     }
-    with open(log_path, "wb") as f:
+    with open(log_path, 'wb') as f:
         pickle.dump(log_data, f)
 
     return np.vstack(features_list), all_headers, all_sequences
