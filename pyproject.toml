@@ -90,8 +90,8 @@ build = "cp313-*"
 skip = "*-win32 *-manylinux_i686 *-musllinux*"
 
 # Run tests after each wheel is built to verify it works
-test-requires = ["pytest"]
-test-command = "pytest {project}/tests -x -q"
+test-requires = ["pytest", "numpy", "bio", "rich", "typer", "scikit-learn", "xgboost", "joblib", "matplotlib", "seaborn", "pandas", "scipy"]
+test-command = "pytest {project}/tests -x -q --import-mode=importlib"
 
 [tool.cibuildwheel.linux]
 # manylinux2014 is the standard for broad Linux compatibility
