@@ -1,6 +1,6 @@
 [project]
 name = "bitser"
-version = "0.3.91"
+version = "0.3.92"
 description = "Binary Pattern Sequence Recognition for biological sequences"
 authors = [
     {name = "LCostaF",email = "lucascostafuganti@alunos.utfpr.edu.br"}
