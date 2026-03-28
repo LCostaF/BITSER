@@ -1,6 +1,6 @@
 [project]
 name = "bitser"
-version = "0.3.92"
+version = "0.3.93"
 description = "Binary Pattern Sequence Recognition for biological sequences"
 authors = [
     {name = "LCostaF",email = "lucascostafuganti@alunos.utfpr.edu.br"}
@@ -68,7 +68,6 @@ isort = "^6.0.1"
 taskipy = "^1.14.1"
 
 [tool.pytest.ini_options]
-pythonpath = "."
 addopts = "--doctest-modules"
 
 [tool.isort]
@@ -90,8 +89,8 @@ build = "cp313-*"
 skip = "*-win32 *-manylinux_i686 *-musllinux*"
 
 # Run tests after each wheel is built to verify it works
-test-requires = ["pytest", "numpy", "bio", "rich", "typer", "scikit-learn", "xgboost", "joblib", "matplotlib", "seaborn", "pandas", "scipy"]
-test-command = "pytest {project}/tests -x -q --import-mode=importlib"
+test-requires = ["pytest", "cython", "numpy", "bio", "rich", "typer", "scikit-learn", "xgboost", "joblib", "matplotlib", "seaborn", "pandas", "scipy"]
+test-command = "pytest {project}/tests -x -q"
 
 [tool.cibuildwheel.linux]
 # manylinux2014 is the standard for broad Linux compatibility
