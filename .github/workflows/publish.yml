@@ -19,7 +19,9 @@ jobs:
           CIBW_BUILD: cp313-*
           CIBW_TEST_REQUIRES: pytest cython numpy bio rich typer scikit-learn xgboost joblib matplotlib seaborn pandas scipy
           CIBW_TEST_COMMAND: "pytest {project}/tests -x -q"
-          CIBW_BEFORE_TEST_LINUX: "mv {project}/bitser {project}/bitser_source"
+          CIBW_BEFORE_TEST_LINUX: >
+            (yum install -y openblas-devel || apt-get install -y libopenblas-dev) &&
+            mv {project}/bitser {project}/bitser_source
           CIBW_AFTER_TEST_LINUX: "mv {project}/bitser_source {project}/bitser"
 
       - name: Upload wheels as artifacts
