@@ -71,16 +71,16 @@ cpdef np.ndarray[DTYPE_t, ndim=1] return_tu_array(str subseq, dict eiip, int fla
     """
     cdef:
         float center
-        list neighbors
+        float neighbor
         np.ndarray[DTYPE_t, ndim=1] result
         int i
 
-    center = eiip.get(subseq[0], 0)
-    neighbors = [eiip.get(c, 0) for c in subseq[1:flank + 1]]
-
+    center = <float>eiip.get(subseq[0], 0)
     result = np.zeros(flank, dtype=np.uint8)
+
     for i in range(flank):
-        if neighbors[i] >= center:
+        neighbor = <float>eiip.get(subseq[i + 1], 0)
+        if neighbor >= center:
             result[i] = 1
 
     return result
@@ -107,7 +107,6 @@ cpdef int calc_tu_number(np.ndarray[DTYPE_t, ndim=1] tu_array, int flank=8):
         result += tu_array[i] * POWERS_OF_TWO[i]
     
     return min(result, MAX_TU_NUMBER)
-
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
