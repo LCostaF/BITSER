@@ -21,6 +21,7 @@ jobs:
           CIBW_TEST_COMMAND: "pytest {project}/tests -x -q"
           CIBW_BEFORE_TEST_LINUX: >
             (yum install -y openblas-devel || apt-get install -y libopenblas-dev) &&
+            pip install --only-binary=scipy scipy &&
             mv {project}/bitser {project}/bitser_source
           CIBW_AFTER_TEST_LINUX: "mv {project}/bitser_source {project}/bitser"
 
