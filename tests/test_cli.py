@@ -15,6 +15,10 @@ from bitser.cli import app
 runner = CliRunner()
 
 
+def strip_ansi(text: str) -> str:
+    return re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', text)
+
+
 @pytest.fixture
 def minimal_dataset(tmp_path: Path) -> Generator[dict, None, None]:
     """Creates a minimal dataset for testing."""
@@ -45,7 +49,7 @@ def test_version_flag():
     result = runner.invoke(app, ['--version'])
     assert result.exit_code == 0
 
-    clean = re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', result.stdout)
+    clean = strip_ansi(result.stdout)
     assert __version__ in clean
     assert 'BITSER version:' in clean
 
@@ -87,20 +91,16 @@ def test_metadata_command_success(minimal_dataset):
     assert 'metadata.tsv created' in result.stdout
 
 
-# ==================== ERROR CASE TESTS ====================
-
-
 def test_metadata_missing_required_args():
-    """Typer shows its own error when a required Option is missing (exit code 2)."""
     result = runner.invoke(app, ['metadata'])
 
+    clean = strip_ansi(result.stdout)
     assert result.exit_code == 2
-    assert "Missing option '--dataset' / '-d'" in result.stdout
-    assert 'Usage: root metadata [OPTIONS]' in result.stdout
+    assert "Missing option '--dataset' / '-d'" in clean
+    assert 'Usage: root metadata [OPTIONS]' in clean
 
 
 def test_metadata_invalid_train_count(minimal_dataset):
-    """Test custom validation that runs *after* Typer parsing."""
     ds = minimal_dataset
     result = runner.invoke(
         app,
@@ -111,20 +111,26 @@ def test_metadata_invalid_train_count(minimal_dataset):
             '--class-delim',
             '|',
             '--train-count',
-            '0',  # triggers custom validation
+            '0',
         ],
     )
+
+    clean = strip_ansi(result.stdout)
     assert result.exit_code == 1
-    assert '--train-count must be a positive integer' in result.stdout
+    assert '--train-count must be a positive integer' in clean
 
 
 def test_train_missing_required_args():
     result = runner.invoke(app, ['train'])
+
+    clean = strip_ansi(result.stdout)
     assert result.exit_code == 2
-    assert "Missing option '--input' / '-i'" in result.stdout
+    assert "Missing option '--input' / '-i'" in clean
 
 
 def test_predict_missing_required_args():
     result = runner.invoke(app, ['predict'])
+
+    clean = strip_ansi(result.stdout)
     assert result.exit_code == 2
-    assert "Missing option '--model' / '-m'" in result.stdout
+    assert "Missing option '--model' / '-m'" in clean
