@@ -639,12 +639,12 @@ def test(
             test_df,
             test_classes,
             model_data.get('name_class', []),
+            output_dir,
             train_df=None,
             previous_output=model_data.get('output_text', ''),
             classifier_type=classifier_type,
             validation_df=None,
             validation_classes=None,
-            save_files=True,
         )
         console.print(
             f'[bold green]✓ Prediction complete![/bold green] Results saved to output files'

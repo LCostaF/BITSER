@@ -66,7 +66,7 @@ def process_file(
 
 
 def extract_features_from_metadata(
-    metadata_path,
+    base_dir,
     split=None,
     flank: int = 8,
     translate_sequences=False,
@@ -75,19 +75,18 @@ def extract_features_from_metadata(
     """
     Extract features using a metadata table describing sequences.
     """
+    metadata_path = os.path.join(base_dir, 'metadata.tsv')
     metadata = pd.read_csv(metadata_path, sep='\t', comment='#')
 
     if split is not None and 'split' in metadata.columns:
         metadata = metadata[metadata['split'] == split]
-
-    base_dir = Path(metadata_path).parent
 
     grouped = metadata.groupby('fasta_path')
 
     tasks = []
 
     for fasta_path, group in grouped:
-        full_path = base_dir / fasta_path
+        full_path = os.path.join(base_dir, fasta_path)
         allowed_indices = set(group['record_index'])
         class_map_by_index = dict(zip(group['record_index'], group['class']))
 
@@ -116,7 +115,7 @@ def extract_features_from_metadata(
         m for sublist in trans_matrices_list for m in sublist
     ]
 
-    log_path = base_dir / 'tu_transition_log.pkl'
+    log_path = os.path.join(base_dir, 'tu_transition_log.pkl')
     log_data = {
         'headers': all_headers,
         'tu_orders': all_tu_orders,

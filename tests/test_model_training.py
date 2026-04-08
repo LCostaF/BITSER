@@ -287,79 +287,7 @@ def test_predict_and_evaluate(synthetic_data):
     name_class = [str(cls) for cls in label_encoder.classes_]
 
     # Test with basic parameters
-    (
-        classifier,
-        min_max_scaler,
-        label_encoder,
-        complete_output,
-        predictions,
-        y_test,
-    ) = model_training.predict_and_evaluate(
-        classifier,
-        min_max_scaler,
-        label_encoder,
-        test_df,
-        test_classes,
-        name_class=name_class,
-        save_files=False,
-    )
-
-    # Check if the returns are correct
-    assert isinstance(classifier, RandomForestClassifier)
-    assert isinstance(min_max_scaler, MinMaxScaler)
-    assert isinstance(label_encoder, LabelEncoder)
-    assert isinstance(complete_output, str)
-
-    # Test with validation data and previous output
-    validation_df, validation_classes = synthetic_data
-    previous_output = 'Previous output text'
-
-    (
-        classifier,
-        min_max_scaler,
-        label_encoder,
-        complete_output,
-        predictions,
-        y_test,
-    ) = model_training.predict_and_evaluate(
-        classifier,
-        min_max_scaler,
-        label_encoder,
-        test_df,
-        test_classes,
-        name_class=name_class,
-        train_df=train_df,
-        previous_output=previous_output,
-        classifier_type='rf',
-        validation_df=validation_df,
-        validation_classes=validation_classes,
-        save_files=False,
-    )
-
-    # Check if previous output is included
-    assert previous_output in complete_output
-    assert isinstance(complete_output, str)
-
-
-def test_predict_and_evaluate_with_save_files(synthetic_data):
-    """Test save_files parameter in predict_and_evaluate function."""
-    train_df, train_classes = synthetic_data
-    test_df, test_classes = synthetic_data
-
-    (
-        classifier,
-        min_max_scaler,
-        label_encoder,
-        _,
-        _,
-    ) = model_training.train_classification_model(
-        train_df, train_classes, classifier_type='rf', perform_cv=False
-    )
-
-    name_class = [str(cls) for cls in label_encoder.classes_]
-
-    # Mock the save_output_to_file function to check if it's called
-    with patch('bitser.model_training.save_output_to_file') as mock_save:
+    with tempfile.TemporaryDirectory() as tmp_dir:
         (
             classifier,
             min_max_scaler,
@@ -374,12 +302,45 @@ def test_predict_and_evaluate_with_save_files(synthetic_data):
             test_df,
             test_classes,
             name_class=name_class,
-            classifier_type='rf',
-            save_files=True,  # Enable saving
+            output_dir=tmp_dir,
         )
 
-        # Check if save_output_to_file was called with the correct parameters
-        mock_save.assert_called_once_with(complete_output, 'rf')
+    # Check if the returns are correct
+    assert isinstance(classifier, RandomForestClassifier)
+    assert isinstance(min_max_scaler, MinMaxScaler)
+    assert isinstance(label_encoder, LabelEncoder)
+    assert isinstance(complete_output, str)
+
+    # Test with validation data and previous output
+    validation_df, validation_classes = synthetic_data
+    previous_output = 'Previous output text'
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        (
+            classifier,
+            min_max_scaler,
+            label_encoder,
+            complete_output,
+            predictions,
+            y_test,
+        ) = model_training.predict_and_evaluate(
+            classifier,
+            min_max_scaler,
+            label_encoder,
+            test_df,
+            test_classes,
+            name_class=name_class,
+            output_dir=tmp_dir,
+            train_df=train_df,
+            previous_output=previous_output,
+            classifier_type='rf',
+            validation_df=validation_df,
+            validation_classes=validation_classes,
+        )
+
+    # Check if previous output is included
+    assert previous_output in complete_output
+    assert isinstance(complete_output, str)
 
 
 def test_save_and_load_model(synthetic_data):

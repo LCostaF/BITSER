@@ -209,12 +209,12 @@ def predict_and_evaluate(
     test_df,
     test_classes,
     name_class,
+    output_dir,
     train_df=None,
     previous_output='',
     classifier_type='xgb',
     validation_df=None,
     validation_classes=None,
-    save_files=True,
 ):
     """
     Predict and evaluate a trained classifier on test and validation data.
@@ -230,6 +230,8 @@ def predict_and_evaluate(
         Series containing the class labels for the test dataset
     name_class : list
         List of unique class names corresponding to the class labels
+    output_dir : path
+        Path to output directory
     train_df : pandas.DataFrame, optional
         Original training DataFrame (used only for feature names in importance display)
     previous_output : str, default=""
@@ -240,8 +242,6 @@ def predict_and_evaluate(
         DataFrame containing the features for the validation dataset
     validation_classes : pandas.Series, optional
         Series containing the class labels for the validation dataset
-    save_files : bool, default=True
-        Whether to save output files
 
     Returns:
     --------
@@ -339,8 +339,7 @@ def predict_and_evaluate(
 
     complete_output = previous_output + evaluation_output
 
-    if save_files:
-        save_output_to_file(complete_output, classifier_type)
+    save_output_to_file(complete_output, classifier_type, output_dir)
 
     predictions = label_encoder.inverse_transform(y_pred_test)
 
