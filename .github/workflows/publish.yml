@@ -3,10 +3,10 @@ name: Build wheels and publish to PyPI
 on:
   push:
     tags:
-      - "v*"   # triggers on version tags like v0.3.4
+      - "v*"
 
 jobs:
-  build_wheels:
+  build_wheels_linux:
     name: Build wheels on ubuntu
     runs-on: ubuntu-latest
 
@@ -28,7 +28,31 @@ jobs:
       - name: Upload wheels as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-ubuntu
+          name: wheels-linux
+          path: ./wheelhouse/*.whl
+
+  build_wheels_windows:
+    name: Build wheels on windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.22.0
+        env:
+          CIBW_BUILD: cp313-*
+          CIBW_TEST_REQUIRES: pytest cython numpy bio rich typer scikit-learn xgboost joblib matplotlib seaborn pandas scipy
+          CIBW_TEST_COMMAND: "pytest {project}/tests -x -q"
+          CIBW_BEFORE_TEST_WINDOWS: >
+            pip install --only-binary=scipy scipy &&
+            move {project}\bitser {project}\bitser_source
+          CIBW_AFTER_TEST_WINDOWS: "move {project}\bitser_source {project}\bitser"
+
+      - name: Upload wheels as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-windows
           path: ./wheelhouse/*.whl
 
   build_sdist:
@@ -54,7 +78,7 @@ jobs:
 
   publish:
     name: Publish to PyPI
-    needs: [build_wheels, build_sdist]
+    needs: [build_wheels_linux, build_wheels_windows, build_sdist]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
