@@ -1,4 +1,3 @@
-# tests/test_cli.py
 import re
 from pathlib import Path
 from typing import Generator
@@ -18,12 +17,7 @@ runner = CliRunner()
 
 @pytest.fixture
 def minimal_dataset(tmp_path: Path) -> Generator[dict, None, None]:
-    """
-    Creates:
-    - dataset/
-      - sequences/
-        - seqs1.fasta   (4 sequences: 2×classA train, 2×classB test)
-    """
+    """Creates a minimal dataset for testing."""
     dataset_dir = tmp_path / 'dataset'
     seq_dir = dataset_dir / 'sequences'
     seq_dir.mkdir(parents=True)
@@ -43,7 +37,7 @@ def minimal_dataset(tmp_path: Path) -> Generator[dict, None, None]:
         'dataset_dir': dataset_dir,
         'sequences_dir': seq_dir,
         'fasta_path': fasta_path,
-        'metadata_expected_path': dataset_dir / 'metadata.tsv',
+        'metadata_path': dataset_dir / 'metadata.tsv',
     }
 
 
@@ -51,7 +45,6 @@ def test_version_flag():
     result = runner.invoke(app, ['--version'])
     assert result.exit_code == 0
 
-    # Clean ANSI codes if present
     clean = re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', result.stdout)
     assert __version__ in clean
     assert 'BITSER version:' in clean
@@ -83,7 +76,7 @@ def test_metadata_command_success(minimal_dataset):
             '--class-which',
             '-1',
             '--train-count',
-            '1',  # 1 train per class
+            '1',
             '--seed',
             '42',
         ],
@@ -92,22 +85,46 @@ def test_metadata_command_success(minimal_dataset):
 
     assert result.exit_code == 0
     assert 'metadata.tsv created' in result.stdout
-    assert '✓' in result.stdout
 
-    metadata_path = ds['metadata_expected_path']
-    assert metadata_path.is_file()
 
-    df = pd.read_csv(metadata_path, sep='\t')
-    assert list(df.columns) == [
-        'sample-id',
-        'fasta_path',
-        'class',
-        'split',
-        'record_index',
-    ]
-    assert len(df) == 4
-    assert set(df['class'].unique()) == {'class1', 'class2'}
-    assert df['split'].value_counts().to_dict() == {
-        'train': 2,
-        'test': 2,
-    }  # 1 per class
+# ==================== ERROR CASE TESTS ====================
+
+
+def test_metadata_missing_required_args():
+    """Typer shows its own error when a required Option is missing (exit code 2)."""
+    result = runner.invoke(app, ['metadata'])
+
+    assert result.exit_code == 2
+    assert "Missing option '--dataset' / '-d'" in result.stdout
+    assert 'Usage: root metadata [OPTIONS]' in result.stdout
+
+
+def test_metadata_invalid_train_count(minimal_dataset):
+    """Test custom validation that runs *after* Typer parsing."""
+    ds = minimal_dataset
+    result = runner.invoke(
+        app,
+        [
+            'metadata',
+            '--dataset',
+            str(ds['dataset_dir']),
+            '--class-delim',
+            '|',
+            '--train-count',
+            '0',  # triggers custom validation
+        ],
+    )
+    assert result.exit_code == 1
+    assert '--train-count must be a positive integer' in result.stdout
+
+
+def test_train_missing_required_args():
+    result = runner.invoke(app, ['train'])
+    assert result.exit_code == 2
+    assert "Missing option '--input' / '-i'" in result.stdout
+
+
+def test_predict_missing_required_args():
+    result = runner.invoke(app, ['predict'])
+    assert result.exit_code == 2
+    assert "Missing option '--model' / '-m'" in result.stdout

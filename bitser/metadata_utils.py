@@ -94,6 +94,8 @@ def generate_metadata(
     if not fasta_files:
         raise FileNotFoundError(f'No FASTA files found in {seq_dir}')
 
+    short_sequences_found = False
+
     for fasta in fasta_files:
         fasta_rel = f'sequences/{fasta.name}'
         full_path = seq_dir / fasta.name
@@ -106,6 +108,12 @@ def generate_metadata(
                 delim=class_delim,
                 which=class_which,
             )
+
+            # Check sequence length for biological constraint (even if class parsing fails)
+            sequence = str(record.seq).strip()
+            if len(sequence) < 1000:
+                short_sequences_found = True
+
             if class_label is None:
                 continue
 
@@ -133,6 +141,23 @@ def generate_metadata(
     class_to_rows = defaultdict(list)
     for row in rows:
         class_to_rows[row['class']].append(row)
+
+    # === Biological constraints enforcement (added) ===
+    if len(class_to_rows) < 2:
+        raise ValueError(
+            'Dataset has fewer than 2 valid classes. Classification requires at least 2 classes.'
+        )
+
+    for cls, group in class_to_rows.items():
+        if len(group) < 180:
+            print(
+                f'Warning: Class "{cls}" has only {len(group)} samples (<180 recommended). Performance may be impacted.'
+            )
+
+    if short_sequences_found:
+        print(
+            'Warning: Some sequences have length < 1000 characters. Performance may be impacted as BITSER was not intended to be used with smaller sequences.'
+        )
 
     final_rows = []
     for cls, group in class_to_rows.items():
