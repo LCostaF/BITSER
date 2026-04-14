@@ -83,20 +83,12 @@ test = "pytest tests -s -x --cov=bitser -vv"
 post_test = "coverage html"
 
 [tool.cibuildwheel]
-# Only build for Python 3.13 (matches your requires-python)
 build = "cp313-*"
 
-# Skip 32-bit builds and musl Linux (Alpine) - uncommon for scientific tools
 skip = "*-win32 *-manylinux_i686 *-musllinux*"
 
-# Run tests after each wheel is built to verify it works
 test-requires = ["pytest"]
 test-command = "pytest {project}/tests -x -q"
 
 [tool.cibuildwheel.linux]
-# manylinux2014 is the standard for broad Linux compatibility
-manylinux-x86_64-image = "manylinux2014"
-
-[tool.cibuildwheel.macos]
-# Build for both Intel and Apple Silicon
-archs = "x86_64 arm64"
+manylinux-x86_64-image = "manylinux_2_28"
