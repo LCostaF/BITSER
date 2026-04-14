@@ -57,10 +57,7 @@ def test_version_flag():
 def test_help_output():
     result = runner.invoke(app, ['--help'])
     assert result.exit_code == 0
-    assert (
-        'BITSER - Bioinformatics Tool for Sequence Classification'
-        in result.stdout
-    )
+    assert 'BITSER - Binary Pattern Sequence Recognition' in result.stdout
     assert 'metadata' in result.stdout
     assert 'train' in result.stdout
     assert 'predict' in result.stdout
