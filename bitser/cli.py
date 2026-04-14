@@ -1,3 +1,4 @@
+import os
 import time
 from pathlib import Path
 
@@ -22,18 +23,32 @@ from bitser.model_training import (
 
 app = Typer(
     rich_markup_mode='rich',
-    help="""BITSER - Bioinformatics Tool for Sequence Classification
+    help="""BITSER - Binary Pattern Sequence Recognition
 
-Examples:
-  [bold]Train a model:[/bold]
-  bitser train --input training_data/ --output model.pkl
+    A command-line tool for training and evaluating ML classifiers on biological sequences
+    using k-mer (sliding-window) feature extraction, based on the Local Binary Pattern (LBP) strategy from the field of texture analysis.
 
-  [bold]Test sequences:[/bold]
-  bitser predict --model model.pkl --data test_sequences/
+    [bold]Workflow:[/bold]
+    1. [cyan]metadata[/cyan]  → Parse FASTA sequences and create metadata.tsv with train/test splits
+    2. [cyan]train[/cyan]     → Extract features from the train split + train model (with cross-validation)
+    3. [cyan]predict[/cyan]  → Load trained model, extract features from the test split, generate predictions + performance report
 
-  [bold]Quick start:[/bold]
-  bitser train -i training/ -o results/model.pkl -f 8
-""",
+    [bold]Commands:[/bold]
+    • metadata   Generate metadata.tsv (required first step)
+    • train      Train a classification model (XGBoost, Random Forest, SVM, MLP or Naive Bayes)
+    • predict    Predict test data based on the trained classification model
+
+    [bold]Examples:[/bold]
+
+    [bold]1. Generate metadata:[/bold]
+    bitser metadata -d mydata/ -delim "_" -n 200
+
+    [bold]2. Train a model:[/bold]
+    bitser train -i mydata/ -dir results/ -i model.pkl
+
+    [bold]3. Predict on test data:[/bold]
+    bitser predict -m results/model.pkl -dir results/ -d testdata/
+    """,
 )
 console = Console()
 
@@ -111,21 +126,6 @@ def metadata(
     You must specify --class-delim to tell the tool how to find the class label.
     The class token is automatically cleaned to contain only alphanumeric characters.
     """
-    # === Early validation for missing required arguments ===
-    if not dataset:
-        console.print(
-            '[red bold]Error:[/red bold] --dataset (-d) is required.'
-        )
-        raise Exit(code=1)
-    if not class_delim:
-        console.print('[red bold]Error:[/red bold] --class-delim is required.')
-        console.print('Examples:')
-        console.print('  --class-delim " " --class-which 1')
-        console.print('  --class-delim "|" --class-which -1')
-        console.print('  --class-delim "genotype " --class-which 1')
-        raise Exit(code=1)
-
-    # === Early validation for invalid argument values ===
     if train_count <= 0:
         console.print(
             '[red bold]Error:[/red bold] --train-count must be a positive integer (> 0).'
@@ -137,7 +137,6 @@ def metadata(
         )
         raise Exit(code=1)
 
-    # === Early validation for dataset path issues ===
     dataset_path = Path(dataset).resolve()
     if not dataset_path.exists():
         console.print(
@@ -234,7 +233,7 @@ def train(
             '-o',
             help='Path to save the trained model (e.g., "model.pkl")',
         ),
-    ] = 'model.pkl',
+    ],
     classifier: Annotated[
         str,
         Option(
@@ -290,17 +289,8 @@ def train(
     2. Model training with cross-validation
     3. Saving the trained model for future use
     """
-    # === Early validation for missing required arguments ===
-    if not input:
-        console.print('[red bold]Error:[/red bold] --input (-i) is required.')
-        raise Exit(code=1)
-    if not output_dir:
-        console.print(
-            '[red bold]Error:[/red bold] --output-dir (-dir) is required.'
-        )
-        raise Exit(code=1)
+    output = os.path.join(output_dir, output)
 
-    # === Early validation for invalid argument values ===
     if classifier not in {'xgb', 'rf', 'svm', 'mlp', 'nb'}:
         console.print(
             f'[red bold]Error:[/red bold] Unsupported classifier "{classifier}". Must be one of: xgb, rf, svm, mlp, nb.'
@@ -322,7 +312,6 @@ def train(
         )
         raise Exit(code=1)
 
-    # === Early validation for dataset path and required structure ===
     input_path = Path(input).resolve()
     if not input_path.exists():
         console.print(
@@ -351,7 +340,6 @@ def train(
     )
 
     try:
-        # Extract features with progress indication
         console.print('[cyan]Extracting features...[/cyan]')
         train_features, _, _ = extract_features_from_metadata(
             input,
@@ -482,7 +470,7 @@ def test(
             '-d',
             help='Dataset directory (must contain metadata.tsv and sequences/ folder)',
         ),
-    ] = None,
+    ],
     flank: Annotated[
         int,
         Option(
@@ -510,16 +498,6 @@ def test(
     test_headers = None
     test_sequences = None
 
-    # === Early validation for missing required arguments ===
-    if not model:
-        console.print('[red bold]Error:[/red bold] --model (-m) is required.')
-        raise Exit(code=1)
-
-    if not output_dir:
-        console.print('[red bold]Error:[/red bold] --output-dir is required.')
-        raise Exit(code=1)
-
-    # === Early validation for invalid argument values ===
     if flank <= 0:
         console.print(
             '[red bold]Error:[/red bold] --flank must be a positive integer (> 0).'
@@ -546,7 +524,6 @@ def test(
         raise Exit(code=1)
 
     if data:
-        # === Early validation for test dataset path and required structure ===
         data_path = Path(data).resolve()
         if not data_path.exists():
             console.print(
@@ -620,13 +597,6 @@ def test(
                 f'[red bold]Error:[/red bold] Feature extraction failure: {str(e)}'
             )
             raise Exit(code=1)
-    else:
-        if 'test_data' not in model_data:
-            console.print(
-                '[red]Error:[/red] No test data provided and no saved test data found in model!'
-            )
-            raise Exit(code=1)
-        test_df, test_classes = model_data['test_data']
 
     classifier_type = type(model_data['classifier']).__name__.lower()
 
@@ -667,7 +637,6 @@ def test(
             )
         raise Exit(code=1)
 
-    # Generate and save CSV report
     console.print('[cyan]Generating prediction report...[/cyan]')
     try:
         report_df = pd.DataFrame(

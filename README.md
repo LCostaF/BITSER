@@ -5,7 +5,7 @@
 
 #### **BI**nary pa**T**tern **S**equenc**E** **R**ecognition
 
-![image_info](https://img.shields.io/badge/bitser-v0.4.1-blue)
+![image_info](https://img.shields.io/badge/bitser-v0.4.2-blue)
 
 </div>
 
@@ -25,7 +25,7 @@ BITSER (Binary Pattern Sequence Recognition) is a software tool built with the P
 
 The method for feature extraction utilizes the concept of Local Binary Pattern (LBP), as well as adapted versions of the Texture Unit and Texture Unit Number from the field of computer vision, to obtain informative features from sequences organized in FASTA files.
 
-A k-mer window (default size 9) slides over each genetic sequence, comparing the leftmost nucleotide or aminoacid in the window with the 8 other members.
+A k-mer window of size 9 slides over each genetic sequence, comparing the leftmost nucleotide or aminoacid in the window with the 8 other members.
 
 This tool is targeted for usage by biologists, researchers and other professionals in the field of bioinformatics.
 
@@ -39,93 +39,87 @@ After the installation, run `bitser --help` to see all the available commands.
 
 ## CLI commands
 
-BITSER offers the following commands:
+BITSER follows a three-step workflow:
 
-| COMMAND | FUNCTION                                         |
-|---------|--------------------------------------------------|
-| `metadata` | Parse FASTA headers and create `metadata.tsv` with train/test splits   |
-| `train`    | Extract features and train a classification model                      |
-| `predict`  | Load a trained model and predict classes on new sequences              |
+1. `metadata` → generate `metadata.tsv` with train/test split  
+2. `train` → extract features from train split and train model  
+3. `predict` → evaluate model on test split and generate reports  
+
+| COMMAND   | FUNCTION                                                                 |
+|-----------|--------------------------------------------------------------------------|
+| `metadata` | Parse FASTA headers and create `metadata.tsv` with train/test splits     |
+| `train`    | Extract features from training split and train classification model      |
+| `predict`  | Load trained model, evaluate on test split, and generate reports         |
+
+---
 
 ### `metadata` command
 
-This command must be run on your training dataset directory.
+Generates `metadata.tsv` by parsing FASTA headers and splitting data into train/test sets.
 
-The dataset directory **must contain a `sequences/` subfolder** with the FASTA files.
-
-The command scans all `.fasta` files in the `sequences/` subfolder, parses headers to extract class labels, and creates a `metadata.tsv` file, which is used for the `train` and `predict` commands.
-
-Example structure:
-
-```
-dataset/
-├── sequences/
-│ ├── class_a.fasta
-│ └── class_b.fasta
-```
-
-After executing the command:
-
-```
-dataset/
-├── sequences/
-│ ├── class_a.fasta
-│ └── class_b.fasta
-└──metadata.tsv
-```
-
-### `train` command
-
-This command initiates the feature extraction and model training workflow.
-
-Training performs the following steps:
-
-1. Feature extraction using sliding windows;
-2. Construction of the training feature matrix;
-3. Model training using cross-validation;
-4. Saving the trained model.
+The dataset directory **must contain a `sequences/` subfolder** with FASTA files.
 
 #### Parameters
 
 | Parameter | Description | Required | Default |
 |---|---|:--:|---|
-| `--input`, `-i` | Path to the dataset directory containing `metadata.tsv` and `sequences/` | ✔ | |
-| `--output`, `-o` | Path to save the trained model | | `model.pkl` |
-| `--classifier`, `-c` | Classifier algorithm | | `xgb` |
-| `--flank`, `-f` | Number of neighbors compared to the reference character in the sliding window | | `8` |
-| `--translate / --no-translate` | Translate nucleotide sequences to proteins before feature extraction | | `False` |
-| `--splits`, `-s` | Number of folds used for cross-validation | | `10` |
+| `--dataset`, `-d` | Dataset directory containing `sequences/` | ✔ | |
+| `--class-delim`, `-delim` | Delimiter used to extract class label from FASTA headers | ✔ | |
+| `--train-count`, `-n` | Number of sequences per class used for training | ✔ | |
+| `--class-which`, `-which` | Which occurrence of the delimiter to use (1 = first, -1 = last) | | `1` |
+| `--seed` | Random seed for reproducibility | | `7` |
+
+#### Output
+
+- `metadata.tsv` file containing dataset splits
+
+---
+
+### `train` command
+
+Performs feature extraction and trains a classification model using the **training split only**.
+
+#### Parameters
+
+| Parameter | Description | Required | Default |
+|---|---|:--:|---|
+| `--input`, `-i` | Dataset directory containing `metadata.tsv` and `sequences/` | ✔ | |
+| `--output-dir`, `-dir` | Directory where outputs (model + logs) will be saved | ✔ | |
+| `--output`, `-o` | Model filename (e.g., `model.pkl`) | ✔ | |
+| `--classifier`, `-c` | Classifier: `xgb`, `rf`, `svm`, `mlp`, `nb` | | `xgb` |
+| `--flank`, `-f` | Sliding window size for feature extraction | | `8` |
+| `--translate / --no-translate` | Translate nucleotide sequences to proteins | | `False` |
+| `--splits`, `-s` | Number of cross-validation folds | | `10` |
 | `--repeats`, `-r` | Number of cross-validation repetitions | | `10` |
 | `--seed` | Random seed for reproducibility | | `7` |
 
 #### Output
 
-- Trained model file (`.pkl`);
-- Training evaluation results stored in the `results/` directory.
+- Trained model (`.pkl`) saved inside `--output-dir`
+- Training logs and evaluation results saved to `--output-dir`
+
+---
 
 ### `predict` command
 
-Uses a trained model to classify sequences from a testing dataset.
-
-Feature extraction settings must match those used during training.
+Loads a trained model and evaluates it on the **test split**, generating predictions and reports.
 
 #### Parameters
 
 | Parameter | Description | Required | Default |
 |---|---|:--:|---|
-| `--model`, `-m` | Path to the trained model file | ✔ | |
+| `--model`, `-m` | Path to trained model file | ✔ | |
+| `--output-dir`, `-dir` | Directory where prediction outputs will be saved | ✔ | |
 | `--data`, `-d` | Dataset directory containing `metadata.tsv` and `sequences/` | ✔ | |
-| `--flank`, `-f` | Number of neighbors compared to the reference character in the sliding window, must match value used during training | | `8` |
-| `--translate / --no-translate` | Must match the translation setting used during training | | `False` |
+| `--flank`, `-f` | Sliding window size (must match training) | | `8` |
+| `--translate / --no-translate` | Must match training configuration | | `False` |
 
 #### Output
 
-The prediction step generates:
-
-- Classification results;
-- Per-class performance metrics;
-- Feature importance;
-- Prediction report (CSV).
+- Classification results
+- Per-class performance metrics
+- Confusion matrix (if applicable)
+- Prediction report (CSV) saved to `--output-dir`
 
 ##### Acknowledgements
 
