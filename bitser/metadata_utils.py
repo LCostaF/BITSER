@@ -1,5 +1,4 @@
 import csv
-import random
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List
@@ -27,27 +26,22 @@ def extract_class_from_header(
     if not delim:
         return None
 
-    # Handle positive (from start) and negative (from end) indexing
     if which >= 0:
         parts = header.split(delim, maxsplit=which + 1)
         if len(parts) <= which:
             return None
         after_delim = parts[which]
     else:
-        # Negative which → count from the end (which = -1 → last occurrence)
         parts = header.rsplit(delim, maxsplit=abs(which))
         if len(parts) <= abs(which):
             return None
         after_delim = parts[-1]
 
-    # Take the first word/token after the delimiter
     tokens = after_delim.split()
     if not tokens:
         return None
 
     raw_token = tokens[0].strip()
-
-    # Keep only alphanumeric characters
     clean_class = ''.join(c for c in raw_token if c.isalnum())
 
     if not clean_class:
@@ -58,13 +52,16 @@ def extract_class_from_header(
 
 def generate_metadata(
     dataset_dir: str,
-    train_count: int = 100,
-    seed: int = 7,
     class_delim: str | None = None,
     class_which: int = 1,
 ) -> Path:
     """
-    Generate metadata.tsv by parsing class labels from FASTA headers using a delimiter.
+    Generate metadata.tsv by parsing class labels from FASTA headers.
+
+    Output columns: sample-id, fasta_path, class, record_index.
+    No train/test split is written here; splitting is performed internally
+    by the train command using a reproducible stratified split controlled
+    by --seed.
 
     Required: class_delim must be provided.
     """
@@ -85,12 +82,10 @@ def generate_metadata(
             '  --class-delim "genotype " --class-which 1 # HBV style'
         )
 
-    random.seed(seed)
-
     rows = []
     seen_samples: set[str] = set()
 
-    fasta_files = list(seq_dir.glob('*.f*'))  # .fasta, .fa, .fna, .fas...
+    fasta_files = list(seq_dir.glob('*.f*'))
     if not fasta_files:
         raise FileNotFoundError(f'No FASTA files found in {seq_dir}')
 
@@ -101,7 +96,7 @@ def generate_metadata(
         full_path = seq_dir / fasta.name
 
         for i, record in enumerate(SeqIO.parse(full_path, 'fasta')):
-            header = record.description.strip()   # full header without >
+            header = record.description.strip()
 
             class_label = extract_class_from_header(
                 header=header,
@@ -109,7 +104,6 @@ def generate_metadata(
                 which=class_which,
             )
 
-            # Check sequence length for biological constraint (even if class parsing fails)
             sequence = str(record.seq).strip()
             if len(sequence) < 1000:
                 short_sequences_found = True
@@ -129,7 +123,6 @@ def generate_metadata(
                     'sample-id': sample_id,
                     'fasta_path': fasta_rel,
                     'class': class_label,
-                    'split': '',
                     'record_index': i,
                 }
             )
@@ -137,12 +130,10 @@ def generate_metadata(
     if not rows:
         raise ValueError('No valid sequences found after header parsing.')
 
-    # Group by class and perform per-class train/test split
     class_to_rows = defaultdict(list)
     for row in rows:
         class_to_rows[row['class']].append(row)
 
-    # === Biological constraints enforcement (added) ===
     if len(class_to_rows) < 2:
         raise ValueError(
             'Dataset has fewer than 2 valid classes. Classification requires at least 2 classes.'
@@ -151,44 +142,29 @@ def generate_metadata(
     for cls, group in class_to_rows.items():
         if len(group) < 180:
             print(
-                f'Warning: Class "{cls}" has only {len(group)} samples (<180 recommended). Performance may be impacted.'
+                f'Warning: Class "{cls}" has only {len(group)} samples (<180 recommended). '
+                'Performance may be impacted.'
             )
 
     if short_sequences_found:
         print(
-            'Warning: Some sequences have length < 1000 characters. Performance may be impacted as BITSER was not intended to be used with smaller sequences.'
+            'Warning: Some sequences have length < 1000 characters. '
+            'Performance may be impacted as BITSER was not intended to be used with smaller sequences.'
         )
 
-    final_rows = []
-    for cls, group in class_to_rows.items():
-        random.shuffle(group)
-        n_train = min(train_count, len(group))
-        for i, row in enumerate(group):
-            row['split'] = 'train' if i < n_train else 'test'
-            final_rows.append(row)
-
-    # Write metadata.tsv
     with metadata_path.open('w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(
             f,
-            fieldnames=[
-                'sample-id',
-                'fasta_path',
-                'class',
-                'split',
-                'record_index',
-            ],
+            fieldnames=['sample-id', 'fasta_path', 'class', 'record_index'],
             delimiter='\t',
             lineterminator='\n',
         )
         writer.writeheader()
-        writer.writerows(final_rows)
+        writer.writerows(rows)
 
     print(f'Generated {metadata_path}')
-    print(f'  → {len(final_rows)} entries')
+    print(f'  → {len(rows)} entries')
     print(f'  → {len(class_to_rows)} classes')
-    print(
-        f'  → delim={class_delim!r}, which={class_which}, train_count={train_count}'
-    )
+    print(f'  → delim={class_delim!r}, which={class_which}')
 
     return metadata_path

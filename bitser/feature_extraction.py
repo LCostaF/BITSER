@@ -67,29 +67,51 @@ def process_file(
 
 def extract_features_from_metadata(
     base_dir,
-    split=None,
+    metadata_subset: pd.DataFrame | None = None,
     flank: int = 8,
     translate_sequences=False,
     n_jobs=-1,
 ):
     """
     Extract features using a metadata table describing sequences.
+
+    Parameters
+    ----------
+    base_dir : str
+        Root dataset directory containing the ``sequences/`` folder.
+    metadata_subset : pd.DataFrame or None
+        Pre-filtered metadata DataFrame (e.g. only train rows, or only test
+        rows) produced by ``split_manager.split_metadata`` /
+        ``split_manager.reconstruct_split``.
+        If *None*, the full ``metadata.tsv`` is loaded and all rows are used.
+    flank : int
+        Sliding-window half-size for feature extraction.
+    translate_sequences : bool
+        Whether to translate nucleotide sequences to proteins before
+        feature extraction.
+    n_jobs : int
+        Parallelism passed to joblib (default -1 = all cores).
+
+    Returns
+    -------
+    features : np.ndarray
+        2D array of extracted features (rows = samples).
+    all_headers : list[str]
+        FASTA header strings, one per sample.
+    all_sequences : list[str]
+        Raw nucleotide sequences, one per sample.
     """
-    metadata_path = os.path.join(base_dir, 'metadata.tsv')
-    metadata = pd.read_csv(metadata_path, sep='\t', comment='#')
+    if metadata_subset is None:
+        metadata_path = os.path.join(base_dir, 'metadata.tsv')
+        metadata_subset = pd.read_csv(metadata_path, sep='\t', comment='#')
 
-    if split is not None and 'split' in metadata.columns:
-        metadata = metadata[metadata['split'] == split]
-
-    grouped = metadata.groupby('fasta_path')
+    grouped = metadata_subset.groupby('fasta_path')
 
     tasks = []
-
     for fasta_path, group in grouped:
         full_path = os.path.join(base_dir, fasta_path)
         allowed_indices = set(group['record_index'])
         class_map_by_index = dict(zip(group['record_index'], group['class']))
-
         tasks.append((full_path, allowed_indices, class_map_by_index))
 
     results = Parallel(n_jobs=n_jobs)(
