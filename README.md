@@ -1,4 +1,3 @@
-
 <div align="center" style="display: display_block">
 
 # **BITSER**
@@ -41,21 +40,23 @@ After the installation, run `bitser --help` to see all the available commands.
 
 BITSER follows a three-step workflow:
 
-1. `metadata` → generate `metadata.tsv` with train/test split  
-2. `train` → extract features from train split and train model  
-3. `predict` → evaluate model on test split and generate reports  
+1. `metadata` → parse FASTA headers and generate `metadata.tsv` describing the full dataset (no split is written)
+2. `train` → internally split the dataset, run cross-validation + hyperparameter tuning, and train the final model
+3. `predict` → reconstruct the exact held-out test split from the seed stored in the model, and evaluate on it
 
 | COMMAND   | FUNCTION                                                                 |
 |-----------|--------------------------------------------------------------------------|
-| `metadata` | Parse FASTA headers and create `metadata.tsv` with train/test splits     |
-| `train`    | Extract features from training split and train classification model      |
-| `predict`  | Load trained model, evaluate on test split, and generate reports         |
+| `metadata` | Parse FASTA headers and create `metadata.tsv` describing the full dataset |
+| `train`    | Split the dataset, extract features, and train a classification model    |
+| `predict`  | Load a trained model, reconstruct its test split, and generate reports   |
+
+Run `bitser --help` or `bitser <command> --help` at any time to see this information from the CLI itself.
 
 ---
 
 ### `metadata` command
 
-Generates `metadata.tsv` by parsing FASTA headers and splitting data into train/test sets.
+Generates `metadata.tsv` by parsing FASTA headers. The resulting file describes the **full dataset** (columns: `sample-id`, `fasta_path`, `class`, `record_index`).
 
 The dataset directory **must contain a `sequences/` subfolder** with FASTA files.
 
@@ -64,20 +65,26 @@ The dataset directory **must contain a `sequences/` subfolder** with FASTA files
 | Parameter | Description | Required | Default |
 |---|---|:--:|---|
 | `--dataset`, `-d` | Dataset directory containing `sequences/` | ✔ | |
-| `--class-delim`, `-delim` | Delimiter used to extract class label from FASTA headers | ✔ | |
-| `--train-count`, `-n` | Number of sequences per class used for training | ✔ | |
-| `--class-which`, `-which` | Which occurrence of the delimiter to use (1 = first, -1 = last) | | `1` |
-| `--seed` | Random seed for reproducibility | | `7` |
+| `--class-delim`, `-delim` | Delimiter string before the class label in FASTA headers (e.g. `" "`, `"|"`, `"genotype "`) | ✔ | |
+| `--class-which`, `-which` | Which occurrence of the delimiter to use (`1` = first, `-1` = last) | | `1` |
+
+The extracted class token is automatically cleaned to contain only alphanumeric characters.
 
 #### Output
 
-- `metadata.tsv` file containing dataset splits
+- `metadata.tsv` describing the full dataset (no split included)
+
+#### Example
+
+```bash
+bitser metadata -d mydata/ -delim "_"
+```
 
 ---
 
 ### `train` command
 
-Performs feature extraction and trains a classification model using the **training split only**.
+Loads the full dataset from `metadata.tsv`, performs a stratified train/test split internally, runs cross-validation with hyperparameter tuning on the training subset, and trains the final classification model. The test subset is never seen during tuning or training, and the split definition (including the seed) is persisted inside the saved model so `predict` can reconstruct it exactly.
 
 #### Parameters
 
@@ -89,20 +96,29 @@ Performs feature extraction and trains a classification model using the **traini
 | `--classifier`, `-c` | Classifier: `xgb`, `rf`, `svm`, `mlp`, `nb` | | `xgb` |
 | `--flank`, `-f` | Sliding window size for feature extraction | | `8` |
 | `--translate / --no-translate` | Translate nucleotide sequences to proteins | | `False` |
-| `--splits`, `-s` | Number of cross-validation folds | | `10` |
-| `--repeats`, `-r` | Number of cross-validation repetitions | | `10` |
-| `--seed` | Random seed for reproducibility | | `7` |
+| `--splits`, `-s` | Number of cross-validation folds | | `5` |
+| `--repeats`, `-r` | Number of cross-validation repetitions (for variance estimation) | | `1` |
+| `--test-size` | Fraction of data held out for testing | | `0.20` |
+| `--seed` | Random seed for splitting, CV, and training. Auto-generated and logged if omitted | | auto-generated |
 
 #### Output
 
-- Trained model (`.pkl`) saved inside `--output-dir`
-- Training logs and evaluation results saved to `--output-dir`
+- Trained model (`.pkl`), including the persisted split definition, saved inside `--output-dir`
+- Training logs and cross-validation results saved to `--output-dir`
+
+#### Example
+
+```bash
+bitser train -i mydata/ -dir results/ -o model.pkl --seed 42
+```
 
 ---
 
 ### `predict` command
 
-Loads a trained model and evaluates it on the **test split**, generating predictions and reports.
+Loads a trained model and reconstructs its **exact held-out test split** from the seed and split definition stored inside the model file, guaranteeing zero leakage from training. It then evaluates the model on that split and generates reports.
+
+`--flank` and `--translate/--no-translate`, if specified, must match the values used during `train`.
 
 #### Parameters
 
@@ -116,10 +132,40 @@ Loads a trained model and evaluates it on the **test split**, generating predict
 
 #### Output
 
-- Classification results
-- Per-class performance metrics
+- Test AUROC and per-class performance metrics
 - Confusion matrix (if applicable)
-- Prediction report (CSV) saved to `--output-dir`
+- Per-sample prediction report (CSV) saved to `--output-dir`
+- Reference to the run ID used for the reconstructed split
+
+#### Example
+
+```bash
+bitser predict -m results/model.pkl -dir results/ -d mydata/
+```
+
+## Singularity container
+
+A ready-to-use Singularity (Apptainer) container is available on Zenodo, so BITSER can be run without setting up a local Python/Poetry environment.
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21220797.svg)](https://doi.org/10.5281/zenodo.21220797)
+
+Once you have Singularity/Apptainer installed, click below to download the container:
+
+**Click [HERE](https://zenodo.org/records/21220797/files/bitser.sif?download=1) to download the `bitser.sif` container.**
+
+You can also download it directly with `wget`:
+
+```bash
+wget "https://zenodo.org/records/21220797/files/bitser.sif?download=1" -O bitser.sif
+```
+
+Once downloaded, the container can be run in place of the `bitser` command, for example:
+
+```bash
+singularity exec bitser.sif bitser metadata -d mydata/ -delim "_"
+```
+
+---
 
 ##### Acknowledgements
 
