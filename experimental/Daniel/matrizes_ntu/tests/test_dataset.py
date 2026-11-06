@@ -30,7 +30,8 @@ class DatasetTests(unittest.TestCase):
         path = self.fasta("mRNA", ["ac guN\ntTA", "CC"])
         records = list(read_fasta(path))
         self.assertEqual(records[0][1], "acguNtTA")
-        self.assertEqual(normalize(records[0][1]), "ACGTTA")
+        self.assertEqual(normalize(records[0][1]), "ACGTTTA")
+        self.assertEqual(normalize("aCuUgTNRYSWKMBDHV-. 123"), "ACTTGT")
         self.fasta("lncRNA", ["C" * 10])
         path.write_text(">id ||| lncRNA\nAAAAAAAAAA\n", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "header label"):
@@ -42,12 +43,12 @@ class DatasetTests(unittest.TestCase):
                     list(read_fasta(path))
 
     def test_deduplication_keeps_first_normalized_occurrence(self):
-        self.fasta("mRNA", ["a" * 10 + "UN", "A" * 10, "G" * 10, "T" * 10])
+        self.fasta("mRNA", ["a" * 10 + "UN", "A" * 10 + "T", "G" * 10, "T" * 10])
         self.fasta("lncRNA", ["C" * 10, "G" * 10, "c" * 10])
         records = read_records(self.root)
-        self.assertEqual(records["mRNA"], ["A" * 10, "A" * 10, "G" * 10, "T" * 10])
+        self.assertEqual(records["mRNA"], ["A" * 10 + "T", "A" * 10 + "T", "G" * 10, "T" * 10])
         clean = deduplicate(records)
-        self.assertEqual(clean, {"mRNA": ["A" * 10, "T" * 10], "ncRNA": ["C" * 10]})
+        self.assertEqual(clean, {"mRNA": ["A" * 10 + "T", "T" * 10], "ncRNA": ["C" * 10]})
 
     def test_pairs_are_reproducible_equal_length_and_without_replacement(self):
         records = {"mRNA": ["A" * 11, "A" * 10, "G" * 10, "AC" * 5, "ACG"],

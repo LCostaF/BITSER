@@ -1,8 +1,8 @@
 """Read Mus musculus PLEK records and build deduplicated exact-length pairs.
 
 FASTA labels must match mRNA/lncRNA filenames; lncRNA is reported as ncRNA.
-Effective sequences contain uppercase A/C/G/T only: U is discarded, not mapped
-to T. Each pair contains its mRNA and ncRNA sequences, in that order.
+Effective sequences contain uppercase A/C/G/T only: U is mapped to T and other
+characters are discarded. Each pair contains its mRNA and ncRNA sequences, in that order.
 """
 
 from collections import defaultdict
@@ -38,7 +38,8 @@ def read_fasta(path):
 
 
 def normalize(sequence):
-    return "".join(base for base in sequence.upper() if base in "ACGT")
+    sequence = sequence.upper().replace("U", "T")
+    return "".join(base for base in sequence if base in "ACGT")
 
 
 def read_records(data_dir):

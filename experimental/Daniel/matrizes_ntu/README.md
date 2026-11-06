@@ -26,7 +26,8 @@ O pareamento é automático e usa a semente fixa 42.
 ## Cálculo
 
 Os rótulos dos cabeçalhos devem corresponder aos arquivos mRNA/lncRNA; lncRNA é
-apresentada como ncRNA. A normalização mantém somente A/C/G/T em maiúsculas.
+apresentada como ncRNA. A normalização converte U em T, mantém A/C/G/T em maiúsculas
+e descarta os demais caracteres.
 Duplicatas internas mantêm a primeira ocorrência; sequências compartilhadas
 entre classes são excluídas de ambas. O pareamento sorteia sem reposição a mesma
 quantidade por comprimento, considerando sequências com pelo menos dez bases.
